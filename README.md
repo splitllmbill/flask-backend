@@ -10,3 +10,6 @@ To start the flask server
 python app.py
 or
 python3 app.py
+
+To check the Mongodb connection, try 
+python dbConnection.py
