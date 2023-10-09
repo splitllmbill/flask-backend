@@ -1,9 +1,10 @@
+import json
 from mongoengine import Document, StringField, IntField, DateTimeField, ReferenceField, ListField,connect
 
-connect(db='dummy', host='mongodb+srv://admin:urNZLHKvSpFVbvkm@cluster0.tcjo5lg.mongodb.net/?retryWrites=true&w=majority')
+connect(db='dummy', host='mongodb+srv://username:password@cluster0.tcjo5lg.mongodb.net/?retryWrites=true&w=majority')
 
 class User(Document):
-    _id = StringField(required=True, primary_key=True)
+    # _id = StringField(required=True, primary_key=True)
     name = StringField(required=True)
     email = StringField(required=True)
     phoneNumber = IntField()
@@ -12,6 +13,9 @@ class User(Document):
     createdAt = DateTimeField()
     updatedAt = DateTimeField()
     account = ReferenceField('Account')
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__, 
+            sort_keys=True, indent=4)
 
 class Account(Document):
     _id = StringField(required=True, primary_key=True)
