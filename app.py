@@ -1,14 +1,18 @@
 import os
 from flask import Flask, request, jsonify
-import easyocr
+# import easyocr
 import uuid
-reader = easyocr.Reader(['en'])
+from mongoengine import connect
+import models.common as models
+# reader = easyocr.Reader(['en'])
 
 app = Flask(__name__)
 
 # Set the upload folder
 app.config['UPLOAD_FOLDER'] = 'uploads'
 
+
+#connect(db='dummy', host='mongodb+srv://username:password@cluster0.tcjo5lg.mongodb.net/?retryWrites=true&w=majority')
 # Function to check if the folder for uploads exists, and create it if not
 def create_upload_folder():
     if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -42,9 +46,10 @@ def upload_file():
         # Save the uploaded file using the unique filename
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
 
-        result = reader.readtext(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename),detail=0)
+        
+        #result = reader.readtext(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename),detail=0)
 
-        return jsonify({'message': 'File uploaded successfully', 'filename': unique_filename, 'ocr': result})
+        return jsonify({'message': 'File uploaded successfully', 'filename': unique_filename, 'ocr': "success"})
     
 @app.route('/expense', methods=['POST'])
 def calculate_expense():
@@ -57,6 +62,21 @@ def calculate_expense():
         }
 
         return jsonify(response)
+    
+@app.route('/noob', methods=['POST'])
+def noob():
+    if request.method == 'POST':
+        data = request.get_json() 
+        #sentence = data.get('requestData', 0)['sentence']
+        # noobs=models.User.objects()
+        # print(noobs)
+        users = list(models.User.objects().to_json())
+        # users_json = [user.to_json() for user in noobs]
+        response = {
+            'responseData': jsonify(users)
+        }
+
+        return response
 
 if __name__ == '__main__':
     app.run(port=8081,debug=True)
