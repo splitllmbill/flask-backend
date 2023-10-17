@@ -1,6 +1,40 @@
 from mongoengine import Document, StringField, IntField, DateTimeField, ReferenceField, ListField,connect
+from mongoengine import connect, disconnect
 
-connect(db='dummy', host='mongodb+srv://admin:urNZLHKvSpFVbvkm@cluster0.tcjo5lg.mongodb.net/?retryWrites=true&w=majority')
+
+#connect(db='dummy', host='mongodb+srv://admin:urNZLHKvSpFVbvkm@cluster0.tcjo5lg.mongodb.net/?retryWrites=true&w=majority')
+class DatabaseManager:
+    def __init__(self, db_name='dummy', host='mongodb+srv://admin:urNZLHKvSpFVbvkm@cluster0.tcjo5lg.mongodb.net/?retryWrites=true&w=majority'):
+        self.db_name = db_name
+        self.host = host
+        self.connection = None
+
+    def connect(self):
+        if not self.connection:
+            self.connection = connect(db=self.db_name, host=self.host)
+
+    def disconnect(self):
+        if self.connection:
+            disconnect()
+
+    def insert_document(self, model, **kwargs):
+        document = model(**kwargs)
+        document.save()
+
+    def find_documents(self, model, query={}):
+        return model.objects(**query)
+
+    def find_document(self, model, query={}):
+        return model.objects(**query).first()
+
+    def update_document(self, document, **kwargs):
+        for key, value in kwargs.items():
+            setattr(document, key, value)
+        document.save()
+
+    def delete_document(self, document):
+        if document:
+            document.delete()
 
 class User(Document):
     _id = StringField(required=True, primary_key=True)

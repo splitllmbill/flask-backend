@@ -4,6 +4,7 @@ from flask import Flask, request, jsonify
 import uuid
 from mongoengine import connect
 import models.common as models
+
 # reader = easyocr.Reader(['en'])
 
 app = Flask(__name__)
@@ -80,4 +81,23 @@ def noob():
 
 if __name__ == '__main__':
     app.run(port=8081,debug=True)
+    db_manager = models.DatabaseManager()
 
+#    db_manager.insert_document(User, username="jane_doe", email="jane@example.com", age=25)
+
+#     # Find all users
+#     all_users = db_manager.find_documents(User)
+
+#     # Find a user with a specific username
+#     john_doe = db_manager.find_document(User, query={"username": "john_doe"})
+
+#     # Update a user
+#     if john_doe:
+#         db_manager.update_document(john_doe, age=31)
+
+#    #Find a user you want to delete
+#     user_to_delete = db_manager.find_document(User, query={"username": "john_doe"})
+
+#     if user_to_delete:
+#         # Delete the user
+#         db_manager.delete_document(user_to_delete)
