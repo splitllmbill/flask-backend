@@ -2,8 +2,7 @@ import json
 from mongoengine import Document, StringField, IntField, DateTimeField, ReferenceField, ListField,connect
 from mongoengine import connect, disconnect
 
-
-#connect(db='dummy', host='mongodb+srv://admin:urNZLHKvSpFVbvkm@cluster0.tcjo5lg.mongodb.net/?retryWrites=true&w=majority')
+#connect(db='dummy', host='mongodb+srv://username:password@cluster0.tcjo5lg.mongodb.net/?retryWrites=true&w=majority')
 class DatabaseManager:
     def __init__(self, db_name='dummy', host='mongodb+srv://admin:urNZLHKvSpFVbvkm@cluster0.tcjo5lg.mongodb.net/?retryWrites=true&w=majority'):
         self.db_name = db_name
@@ -38,7 +37,6 @@ class DatabaseManager:
             document.delete()
 
 class User(Document):
-    # _id = StringField(required=True, primary_key=True)
     name = StringField(required=True)
     email = StringField(required=True)
     phoneNumber = IntField()
