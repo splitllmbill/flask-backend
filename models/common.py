@@ -1,3 +1,4 @@
+import json
 from mongoengine import Document, StringField, IntField, DateTimeField, ReferenceField, ListField,connect
 from mongoengine import connect, disconnect
 
@@ -37,7 +38,7 @@ class DatabaseManager:
             document.delete()
 
 class User(Document):
-    _id = StringField(required=True, primary_key=True)
+    # _id = StringField(required=True, primary_key=True)
     name = StringField(required=True)
     email = StringField(required=True)
     phoneNumber = IntField()
@@ -46,6 +47,9 @@ class User(Document):
     createdAt = DateTimeField()
     updatedAt = DateTimeField()
     account = ReferenceField('Account')
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__, 
+            sort_keys=True, indent=4)
 
 class Account(Document):
     _id = StringField(required=True, primary_key=True)

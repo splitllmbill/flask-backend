@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, Response, request, jsonify
 # import easyocr
 import uuid
 from mongoengine import connect
@@ -64,20 +64,15 @@ def calculate_expense():
 
         return jsonify(response)
     
+
 @app.route('/noob', methods=['POST'])
 def noob():
     if request.method == 'POST':
         data = request.get_json() 
-        #sentence = data.get('requestData', 0)['sentence']
-        # noobs=models.User.objects()
-        # print(noobs)
-        users = list(models.User.objects().to_json())
-        # users_json = [user.to_json() for user in noobs]
-        response = {
-            'responseData': jsonify(users)
-        }
 
-        return response
+        users =models.User.objects
+        r = Response(response=users.to_json(), status=200, mimetype="application/json")
+    return r
 
 if __name__ == '__main__':
     app.run(port=8081,debug=True)
