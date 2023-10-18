@@ -1,5 +1,9 @@
+import datetime
+import json
+import time
+from bson import ObjectId
 from flask import Blueprint, request, Response
-from models.common import DatabaseManager,User
+from models.common import DatabaseManager,User,DateTimeField
 from mongoengine.queryset.visitor import Q
 
 db_route = Blueprint('db', __name__)
@@ -29,6 +33,50 @@ def user():
     if request.method == 'GET':
         users = dbManager.findAll(User)
         r = Response(response=users.to_json(), status=200, mimetype="application/json")
+    return r
+
+@db_route.route('/user/<user_id>', methods=['GET'])
+def getUserById(user_id):
+    if request.method == 'GET':
+        try:
+            print(user_id)
+            query={"_id":ObjectId(user_id)}
+            user = dbManager.findOne(User,query)
+            r = Response(response=user.to_json(), status=200, mimetype="application/json")
+        except:
+            r = Response(response='{"message":"bad request"}', status=400, mimetype="application/json")
+    return r
+
+@db_route.route('/user-by-email/<email_id>', methods=['GET'])
+def getUserByEmailId(email_id):
+    try:
+        if request.method == 'GET':
+            print(email_id)
+            query={"email":email_id}
+            user = dbManager.findOne(User,query)
+            r = Response(response=user.to_json(), status=200, mimetype="application/json")
+    except:
+        r = Response(response='{"message":"bad request"}', status=400, mimetype="application/json")
+    return r
+
+@db_route.route('/user', methods=['PUT'])
+def UpdateUser():
+    if request.method == 'PUT':
+        try:      
+            input = json.loads(request.data)  
+            user_id=input["_id"] 
+            print(type(user_id))
+            query={"_id":ObjectId(user_id)}
+
+            user = dbManager.findOne(User,query)
+            print("noob",user)
+            input["updatedAt"]=datetime.datetime.utcnow
+
+            dbManager.update(user, **input)
+            print("User updated details:", user)
+            r = Response(response=user.to_json(), status=200, mimetype="application/json")
+        except:
+            r = Response(response='{"message":"bad request"}', status=400, mimetype="application/json")
     return r
 
 # more examples using db manager
