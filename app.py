@@ -27,23 +27,3 @@ if __name__ == '__main__':
     # db_name, host = get_db_config()
     # db_manager = DatabaseManager(db_name=db_name, host=host)
     # db_manager.connect()
-
-
-#    db_manager.insert_document(User, username="jane_doe", email="jane@example.com", age=25)
-
-    # Find all users
-    # all_users = db_manager.find_documents(User)
-
-    # Find a user with a specific username
-    # john_doe = db_manager.find_document(User, query={"username": "john_doe"})
-
-    # Update a user
-    # if john_doe:
-    #     db_manager.update_document(john_doe, age=31)
-
-   #Find a user you want to delete
-    # user_to_delete = db_manager.find_document(User, query={"username": "john_doe"})
-
-    # if user_to_delete:
-    #     # Delete the user
-    #     db_manager.delete_document(user_to_delete)
