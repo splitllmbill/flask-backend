@@ -1,17 +1,21 @@
 from flask import Blueprint, request, Response
 from models.common import DatabaseManager,User
+from mongoengine.queryset.visitor import Q
 
 db_route = Blueprint('db', __name__)
+dbManager = DatabaseManager()
+dbManager.connect()
 
-# db_manager.connect()
-
+# using model findall or find with query (use for custom queries)
 @db_route.route('/userList', methods=['GET'])
 def userList():
     if request.method == 'GET':
-        users =User.objects
+        query = Q(name='sivaganesh')
+        users =User.objects(query)
         r = Response(response=users.to_json(), status=200, mimetype="application/json")
     return r
 
+# using model to save
 @db_route.route('/createUser', methods=['POST'])
 def createUser():
     if request.method == 'POST':
@@ -19,33 +23,43 @@ def createUser():
         user.save()
         r = Response(response=user.to_json(), status=200, mimetype="application/json")
     return r
+# usin db manager to findall
+@db_route.route('/user', methods=['GET'])
+def user():
+    if request.method == 'GET':
+        users = dbManager.findAll(User)
+        r = Response(response=users.to_json(), status=200, mimetype="application/json")
+    return r
 
-@db_route.route('/users', methods=['GET'])
-def users():
-    query = {}
-    result = DatabaseManager.find('user', query)
-    print(result)
-    l = []
-    for document in result:
-        l.append(document)
-    return l
+# more examples using db manager
 
-# save object to collection
-# db_manager.insert_document(User, username="jane_doe", email="jane@example.com", age=25)
+# user_data = {
+#     'name': 'John Doe',
+#     'email': 'john@example.com',
+#     'phoneNumber': 1234567890,
+#     'password': 'password123',
+#     'token': 'random_token',
+#     'createdAt': datetime.utcnow(),
+#     'updatedAt': datetime.utcnow(),
+# }
 
-# Find all users
-# all_users = db_manager.find_documents(User)
+# # Save a user
+# user = User(**user_data)
+# db_manager.save(User, **user_data)
 
-# Find a user with a specific username
-# john_doe = db_manager.find_document(User, query={"username": "john_doe"})
+# # Find all users
+# all_users = db_manager.findAll(User)
+# print("All Users:", all_users)
 
-# Update a user
-# if john_doe:
-#     db_manager.update_document(john_doe, age=31)
+# # Find one user by name
+# query = {'name': 'John Doe'}
+# user = db_manager.findOne(User, query)
+# print("User found by name:", user)
 
-#Find a user you want to delete
-# user_to_delete = db_manager.find_document(User, query={"username": "john_doe"})
+# # Update user details
+# updated_user_data = {'phoneNumber': 9876543210}
+# db_manager.update(user, **updated_user_data)
+# print("User updated details:", user)
 
-# Delete the user
-# if user_to_delete:
-#     db_manager.delete_document(user_to_delete)
+# # Delete a user
+# db_manager.delete(user)
