@@ -1,17 +1,21 @@
-import json
+import os
 from mongoengine import Document, StringField, IntField, DateTimeField, ReferenceField, ListField,connect
 from mongoengine import connect, disconnect
+from dotenv import load_dotenv
 
-#connect(db='dummy', host='mongodb+srv://username:password@cluster0.tcjo5lg.mongodb.net/?retryWrites=true&w=majority')
+load_dotenv()
 class DatabaseManager:
-    def __init__(self, db_name='dummy', host='mongodb+srv://admin:urNZLHKvSpFVbvkm@cluster0.tcjo5lg.mongodb.net/?retryWrites=true&w=majority'):
-        self.db_name = db_name
-        self.host = host
+    def __init__(self):
+        self.db_name = os.getenv('DB_URL')
+        self.host = os.getenv('DB_NAME')
         self.connection = None
 
     def connect(self):
+        print(self.db_name,self.host)
         if not self.connection:
             self.connection = connect(db=self.db_name, host=self.host)
+            # self.connection = connect(db=db_name, host=host)
+            print('Connection made to Database')
 
     def disconnect(self):
         if self.connection:
@@ -36,6 +40,9 @@ class DatabaseManager:
         if document:
             document.delete()
 
+db_manager = DatabaseManager()
+print(db_manager.db_name,db_manager.host)
+db_manager.connect()
 class User(Document):
     name = StringField(required=True)
     email = StringField(required=True)
@@ -45,9 +52,6 @@ class User(Document):
     createdAt = DateTimeField()
     updatedAt = DateTimeField()
     account = ReferenceField('Account')
-    def toJSON(self):
-        return json.dumps(self, default=lambda o: o.__dict__, 
-            sort_keys=True, indent=4)
 
 class Account(Document):
     _id = StringField(required=True, primary_key=True)
@@ -56,7 +60,7 @@ class Account(Document):
     upiNumber = IntField()
     createdAt = DateTimeField()
     updatedAt = DateTimeField()
-
+    
 class Event(Document):
     _id = StringField(required=True, primary_key=True)
     users = ListField(ReferenceField('User'))
