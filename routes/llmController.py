@@ -31,7 +31,7 @@ def upload_file():
         create_upload_folder()
         unique_filename = generate_unique_filename(file.filename)
         file.save(os.path.join(folder_path, unique_filename))
-        result = reader.readtext(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename),detail=0)
+        result = reader.readtext(os.path.join(current_app.config['UPLOAD_FOLDER'], unique_filename),detail=0)
         return jsonify({'message': 'File uploaded successfully', 'filename': unique_filename, 'ocr': "success"})
     
 @llm_route.route('/expense', methods=['POST'])
