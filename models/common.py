@@ -45,9 +45,8 @@ class JSONSerializer:
                 for key, value in self._data.items()}
     
 class User(Document,JSONSerializer):
-    _id = StringField(required=True, primary_key=True)
     name = StringField(required=True)
-    email = StringField(required=True)
+    email = StringField(required=True,unique=True)
     phoneNumber = IntField()
     password = StringField(required=True)
     token = StringField()
@@ -56,7 +55,6 @@ class User(Document,JSONSerializer):
     account = ReferenceField('Account')
 
 class Account(Document,JSONSerializer):
-    _id = StringField(required=True, primary_key=True)
     userId = ReferenceField('User')
     upiId = StringField()
     upiNumber = IntField()
