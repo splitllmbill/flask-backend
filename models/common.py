@@ -55,7 +55,6 @@ class User(Document,JSONSerializer):
     account = ReferenceField('Account')
 
 class Account(Document,JSONSerializer):
-    _id = StringField(required=True, primary_key=True)
     userId = ReferenceField('User')
     upiId = StringField()
     upiNumber = IntField()

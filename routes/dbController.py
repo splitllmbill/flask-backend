@@ -2,9 +2,10 @@ import datetime
 import json
 from bson import ObjectId
 from flask import Blueprint, request, Response, current_app
-from models.common import DatabaseManager,User
+from models.common import Account, DatabaseManager,User
 from mongoengine.queryset.visitor import Q
 from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
 
@@ -88,8 +89,18 @@ def signup():
             new_user = User(**user_data)
             passwordHash = ph.hash(new_user.password)
             new_user.password = passwordHash
+            new_user.createdAt = datetime.datetime.utcnow
+            new_user.updatedAt = datetime.datetime.utcnow
             new_user.save()
-            del new_user.password
+            new_account = Account()
+            new_account.updatedAt = datetime.datetime.utcnow
+            new_account.userId = new_user.id
+            new_account.save()
+            toUpdate = dict()
+            toUpdate['updatedAt'] = datetime.datetime.utcnow
+            toUpdate['account'] = new_account.id
+            dbManager.update(new_user,**toUpdate)
+            del new_user.createdAt, new_user.updatedAt, new_user.password, new_user.account
             return Response(response=new_user.to_json(), status=201, mimetype="application/json")
         except NotUniqueError as e:
             resp = {'message': 'Email address is already in use. Please choose another.'}
@@ -116,26 +127,40 @@ def loginUser():
                         'email': user.email
                     }
                     token = jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
-                    user.token = token
-                    user.updatedAt = datetime.datetime.utcnow
                     toUpdate = dict()
-                    toUpdate['token'], toUpdate['updatedAt'] = user.token, user.updatedAt
-                    print(toUpdate)
+                    toUpdate['token'], toUpdate['updatedAt'] = token, datetime.datetime.utcnow
                     dbManager.update(user,**toUpdate)         
-                    del user.id  
-                    del user.password
+                    del user.id, user.password, user.createdAt, user.updatedAt, user.account
                     return Response(response=user.to_json(), status=200, mimetype="application/json")
-                else:
-                    resp = {'message': 'Authentication Failed. Invalid Credentials'}
-                    return Response(response=json.dumps(resp), status=401, mimetype="application/json")
             else:
                 resp = {'message': 'Authentication Failed. Account does not exist'}
                 return Response(response=json.dumps(resp), status=401, mimetype="application/json")
+        except VerifyMismatchError as e:
+            resp = {'message': 'Authentication Failed. Invalid Credentials'}
+            return Response(response=json.dumps(resp), status=401, mimetype="application/json")
         except Exception as e:
-            resp = {'message': 'Unexpected Error'}
-            print("An unexpected error occurred:", str(e))
-            return Response(response=json.dumps(resp), status=400, mimetype="application/json")
-
+            resp = {'message': 'Internal Server Error'}
+            print('Exception during login',e,type(e))
+            return Response(response=json.dumps(resp), status=500, mimetype="application/json")
+        
+@db_route.route('/logout',methods=['POST'])
+def logoutUser():
+    if request.method == 'POST':
+        try:
+            # TODO - Token validation instead of email from request body
+            login_data = request.get_json()
+            email = login_data.get('email')
+            query={"email":email}
+            user = dbManager.findOne(User,query)
+            toUpdate = dict()
+            toUpdate['token'] = None
+            dbManager.update(user,**toUpdate)
+            resp = {'message': 'Logout Successful'}
+            return Response(response=json.dumps(resp), status=200, mimetype="application/json")
+        except Exception as e:
+            resp = {'message': 'Internal Server Error'}
+            print('Exception during login',e,type(e))
+            return Response(response=json.dumps(resp), status=500, mimetype="application/json")
 
 # more examples using db manager
 
