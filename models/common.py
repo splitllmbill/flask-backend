@@ -31,9 +31,17 @@ class DatabaseManager:
         return model.objects(**query).first()
 
     def update(self, document, **kwargs):
-        for key, value in kwargs.items():
+        account_fields = set(Account._fields_ordered)
+        filtered_kwargs = {key: value for key, value in kwargs.items() if key in account_fields}
+        unknown_fields = set(kwargs.keys()) - account_fields
+        if unknown_fields:
+            raise ValueError(f"Unknown fields found: {', '.join(unknown_fields)}")
+
+        for key, value in filtered_kwargs.items():
             setattr(document, key, value)
         document.save()
+
+    
 
     def delete(self, document):
         if document:
