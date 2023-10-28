@@ -2,12 +2,15 @@ import datetime
 import json
 from bson import ObjectId
 from flask import Blueprint, request, Response, current_app
+from werkzeug.exceptions import BadRequest
 from models.common import Account, DatabaseManager,User
+from util.response import ResponseStatus, flaskResponse
 from mongoengine.queryset.visitor import Q
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
+from util.auth import validate_jwt_token
 
 db_route = Blueprint('db', __name__)
 dbManager = DatabaseManager()
@@ -15,36 +18,10 @@ dbManager.connect()
 
 ph = PasswordHasher()
 
-# using model findall or find with query (use for custom queries)
-# @db_route.route('/userList', methods=['GET'])
-# def userList():
-#     if request.method == 'GET':
-#         query = Q(name='sivaganesh')
-#         users =User.objects(query)
-#         r = Response(response=users.to_json(), status=200, mimetype="application/json")
-#     return r
-
-# # using model to save
-# @db_route.route('/createUser', methods=['POST'])
-# def createUser():
-#     if request.method == 'POST':
-#         user = User(name='sivaganesh',email='s@g.com',password='hello')
-#         user.save()
-#         r = Response(response=user.to_json(), status=200, mimetype="application/json")
-#     return r
-# # usin db manager to findall
-# @db_route.route('/user', methods=['GET'])
-# def user():
-#     if request.method == 'GET':
-#         users = dbManager.findAll(User)
-#         r = Response(response=users.to_json(), status=200, mimetype="application/json")
-#     return r
-
 @db_route.route('/user/<user_id>', methods=['GET'])
 def getUserById(user_id):
     if request.method == 'GET':
         try:
-            print(user_id)
             query={"_id":ObjectId(user_id)}
             user = dbManager.findOne(User,query)
             r = Response(response=user.to_json(), status=200, mimetype="application/json")
@@ -122,9 +99,11 @@ def loginUser():
             user = dbManager.findOne(User,query)
             if user:
                 if ph.verify(user.password, password):
+                    expiration_time = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
                     payload = {
                         'user_id': str(user.id),  
-                        'email': user.email
+                        'email': user.email,
+                        'exp': expiration_time
                     }
                     token = jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
                     toUpdate = dict()
@@ -161,6 +140,60 @@ def logoutUser():
             resp = {'message': 'Internal Server Error'}
             print('Exception during login',e,type(e))
             return Response(response=json.dumps(resp), status=500, mimetype="application/json")
+        
+
+@db_route.route('/account', methods=['PUT'])
+def updateAccount():
+    if request.method == 'PUT':
+        try:   
+            user_id = validate_jwt_token(request)
+            request_data = request.get_json()
+            print(request_data)
+            query={
+                "id": ObjectId(user_id)
+            }
+            user = dbManager.findOne(User,query)
+            dbManager.update(user.account,**request_data)
+            r = flaskResponse(ResponseStatus.SUCCESS)
+
+        except jwt.PyJWTError as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
+        
+        except (BadRequest,ValueError) as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+
+    return r
+
+# using model findall or find with query (use for custom queries)
+# @db_route.route('/userList', methods=['GET'])
+# def userList():
+#     if request.method == 'GET':
+#         query = Q(name='sivaganesh')
+#         users =User.objects(query)
+#         r = Response(response=users.to_json(), status=200, mimetype="application/json")
+#     return r
+
+# # using model to save
+# @db_route.route('/createUser', methods=['POST'])
+# def createUser():
+#     if request.method == 'POST':
+#         user = User(name='sivaganesh',email='s@g.com',password='hello')
+#         user.save()
+#         r = Response(response=user.to_json(), status=200, mimetype="application/json")
+#     return r
+# # usin db manager to findall
+# @db_route.route('/user', methods=['GET'])
+# def user():
+#     if request.method == 'GET':
+#         users = dbManager.findAll(User)
+#         r = Response(response=users.to_json(), status=200, mimetype="application/json")
+#     return r
 
 # more examples using db manager
 
