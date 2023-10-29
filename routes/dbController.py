@@ -100,7 +100,7 @@ def loginUser():
             user = dbManager.findOne(User,query)
             if user:
                 if ph.verify(user.password, password):
-                    expiration_time = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+                    expiration_time = datetime.datetime.utcnow() + datetime.timedelta(minutes=24*60)
                     payload = {
                         'user_id': str(user.id),              
                         'email': user.email,
@@ -159,11 +159,24 @@ def getExpenseById(userId, expenseId):
     expense = expenseService.getExpenseById(expenseId)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
 
-@db_route.route('/expense/<expenseId>', methods = ['GET'])
+@db_route.route('/expense', methods = ['POST'])
 @requestHandler
-def getExpenseById(userId, expenseId):
-    expense = expenseService.getExpenseById(expenseId)
+def createExpense(userId):
+    expense = expenseService.createExpense()
     return flaskResponse(ResponseStatus.SUCCESS, expense)
+
+@db_route.route('/expense/<expenseId>', methods = ['PUT'])
+@requestHandler
+def updateExpense(userId, expenseId):
+    expense = expenseService.updateExpense()
+    return flaskResponse(ResponseStatus.SUCCESS, expense)
+
+@db_route.route('/expense/<expenseId>', methods = ['DELETE'])
+@requestHandler
+def deleteExpense(userId, expenseId):
+    status = expenseService.deleteExpense(expenseId)
+    return flaskResponse(ResponseStatus.SUCCESS,status)
+    
 
 # using model findall or find with query (use for custom queries)
 # @db_route.route('/userList', methods=['GET'])
