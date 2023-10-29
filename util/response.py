@@ -8,6 +8,7 @@ class ResponseStatus(Enum):
     UNAUTHORIZED = 3
     INVALID_TOKEN = 4
     INTERNAL_SERVER_ERROR = 5
+    METHOD_NOT_ALLOWED=6
 
 defaultResponse = {}
 
@@ -48,3 +49,6 @@ def flaskResponse(status, response = None):
             defaultResponse['message'] = 'Error'
             defaultResponse['error'] = response
         return Response(response=json.dumps(defaultResponse), status=500, mimetype="application/json")
+    
+    if status == ResponseStatus.METHOD_NOT_ALLOWED:
+        return Response(response=json.dumps(defaultResponse), status=405, mimetype="application/json")
