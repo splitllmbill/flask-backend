@@ -13,8 +13,11 @@ defaultResponse = {}
 
 def flaskResponse(type, response = None):
     if type == ResponseStatus.SUCCESS:
-        if response == None:
+        if response is None:
             defaultResponse['message'] = 'Success'
+            response = defaultResponse
+        if response == '':
+            defaultResponse['message'] = 'No record found for id'
             response = defaultResponse
         return Response(response=json.dumps(response), status=200, mimetype="application/json")
     

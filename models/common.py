@@ -31,7 +31,7 @@ class DatabaseManager:
         return model.objects(**query).first()
 
     def update(self, document, **kwargs):
-        account_fields = set(Account._fields_ordered)
+        account_fields = set(type(document)._fields_ordered)
         filtered_kwargs = {key: value for key, value in kwargs.items() if key in account_fields}
         unknown_fields = set(kwargs.keys()) - account_fields
         if unknown_fields:

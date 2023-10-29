@@ -2,15 +2,16 @@ import datetime
 import json
 from bson import ObjectId
 from flask import Blueprint, request, Response, current_app
-from werkzeug.exceptions import BadRequest
-from models.common import Account, DatabaseManager,User
-from util.response import ResponseStatus, flaskResponse
-from mongoengine.queryset.visitor import Q
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
+
+from services import expenseService
+from models.common import Account, DatabaseManager,User
 from util.auth import validate_jwt_token
+from util.response import ResponseStatus, flaskResponse
+from util.requestHandler import requestHandler
 
 db_route = Blueprint('db', __name__)
 dbManager = DatabaseManager()
@@ -101,7 +102,7 @@ def loginUser():
                 if ph.verify(user.password, password):
                     expiration_time = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
                     payload = {
-                        'user_id': str(user.id),  
+                        'user_id': str(user.id),              
                         'email': user.email,
                         'exp': expiration_time
                     }
@@ -140,35 +141,29 @@ def logoutUser():
             resp = {'message': 'Internal Server Error'}
             print('Exception during login',e,type(e))
             return Response(response=json.dumps(resp), status=500, mimetype="application/json")
-        
 
 @db_route.route('/account', methods=['PUT'])
-def updateAccount():
-    if request.method == 'PUT':
-        try:   
-            user_id = validate_jwt_token(request)
-            request_data = request.get_json()
-            print(request_data)
-            query={
-                "id": ObjectId(user_id)
-            }
-            user = dbManager.findOne(User,query)
-            dbManager.update(user.account,**request_data)
-            r = flaskResponse(ResponseStatus.SUCCESS)
+@requestHandler
+def updateAccount(userId):
+    requestData = request.get_json()
+    query = {
+        "id": ObjectId(userId)
+    }
+    user = dbManager.findOne(User, query)
+    dbManager.update(user.account, **requestData)
+    return flaskResponse(ResponseStatus.SUCCESS)
 
-        except jwt.PyJWTError as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
-        
-        except (BadRequest,ValueError) as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+@db_route.route('/expense/<expenseId>', methods = ['GET'])
+@requestHandler
+def getExpenseById(userId, expenseId):
+    expense = expenseService.getExpenseById(expenseId)
+    return flaskResponse(ResponseStatus.SUCCESS, expense)
 
-        except Exception as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
-
-    return r
+@db_route.route('/expense/<expenseId>', methods = ['GET'])
+@requestHandler
+def getExpenseById(userId, expenseId):
+    expense = expenseService.getExpenseById(expenseId)
+    return flaskResponse(ResponseStatus.SUCCESS, expense)
 
 # using model findall or find with query (use for custom queries)
 # @db_route.route('/userList', methods=['GET'])
