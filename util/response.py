@@ -11,26 +11,35 @@ class ResponseStatus(Enum):
 
 defaultResponse = {}
 
-def flaskResponse(type, response = None):
-    if type == ResponseStatus.SUCCESS:
-        if response == None:
+def flaskResponse(status, response = None):
+    if status == ResponseStatus.SUCCESS:
+        if response is None:
             defaultResponse['message'] = 'Success'
             response = defaultResponse
-        return Response(response=json.dumps(response), status=200, mimetype="application/json")
+        if response == False:
+            defaultResponse['message'] = 'No record found for id'
+            response = defaultResponse
+
+        if type(response) == dict:
+            response = json.dumps(response)
+        else: 
+            response = response.to_json()      
+
+        return Response(response, status=200, mimetype="application/json")
     
-    if type == ResponseStatus.BAD_REQUEST:
+    if status == ResponseStatus.BAD_REQUEST:
         defaultResponse['message'] = 'Bad Request'
         return Response(response=json.dumps(defaultResponse), status=400, mimetype="application/json")
     
-    if type == ResponseStatus.UNAUTHORIZED:
+    if status == ResponseStatus.UNAUTHORIZED:
         defaultResponse['message'] = 'Unauthorized Access'
         return Response(response=json.dumps(defaultResponse), status=400, mimetype="application/json")
     
-    if type == ResponseStatus.INVALID_TOKEN:
+    if status == ResponseStatus.INVALID_TOKEN:
         defaultResponse['message'] = 'Invalid Token'
         return Response(response=json.dumps(defaultResponse), status=401, mimetype="application/json")
     
-    if type == ResponseStatus.INTERNAL_SERVER_ERROR:
+    if status == ResponseStatus.INTERNAL_SERVER_ERROR:
         defaultResponse['message'] = 'Internal Server Error'
         if response != None:
             defaultResponse['message'] = 'Success'
