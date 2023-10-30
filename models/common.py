@@ -2,7 +2,9 @@ import os
 from mongoengine import Document, StringField, IntField, DateTimeField, ReferenceField, ListField,connect
 from mongoengine import connect, disconnect
 from dotenv import load_dotenv
-from bson import ObjectId
+from bson import ObjectId, Timestamp, DBRef
+from datetime import datetime
+
 
 load_dotenv()
 class DatabaseManager:
@@ -49,10 +51,49 @@ class DatabaseManager:
             
 class JSONSerializer:
     def to_json(self):
-        return {key: str(value) if isinstance(value, ObjectId) else value
-                for key, value in self._data.items()}
+        json_data = {}
+        for key, value in self._data.items():
+            if isinstance(value, ObjectId):
+                json_data[key] = str(value)
+            elif isinstance(value, Timestamp):
+                json_data[key] = {
+                    "seconds": value.time,
+                    "ordinal": value.inc
+                }
+            elif isinstance(value, DBRef):
+                ref_collection = value.collection
+                ref_id = value.id
+                if ref_collection == 'user':
+                    user = User.objects(id=ref_id).first()
+                    if user:
+                        json_data[key] = user.name
+                elif ref_collection == 'event':
+                    event = Event.objects(id=ref_id).first()
+                    if event:
+                        json_data[key] = event.eventName
+                else:
+                    json_data[key] = f"{ref_collection} ({ref_id})"
+            elif isinstance(value, list) and all(isinstance(item, DBRef) for item in value):
+                ref_list = []
+                for ref in value:
+                    ref_collection = ref.collection
+                    ref_id = ref.id
+                    if ref_collection == 'share':
+                        share = Share.objects(id=ref_id).first()
+                        if share:
+                            ref_list.append(share.to_json())
+                    else:
+                        ref_list.append(f"{ref_collection} ({ref_id})")
+                json_data[key] = ref_list
+            elif isinstance(value, datetime):
+                json_data[key] = value.isoformat()
+            else:
+                if value is not None:
+                    json_data[key] = value
+        
+        return json_data
     
-class User(Document,JSONSerializer):
+class User(JSONSerializer,Document):
     name = StringField(required=True)
     email = StringField(required=True,unique=True)
     phoneNumber = IntField()
@@ -62,36 +103,34 @@ class User(Document,JSONSerializer):
     updatedAt = DateTimeField()
     account = ReferenceField('Account')
 
-class Account(Document,JSONSerializer):
+class Account(JSONSerializer,Document):
     userId = ReferenceField('User')
     upiId = StringField()
     upiNumber = IntField()
     createdAt = DateTimeField()
     updatedAt = DateTimeField()
     
-class Event(Document,JSONSerializer):
-    _id = StringField(required=True, primary_key=True)
+class Event(JSONSerializer,Document):
     users = ListField(ReferenceField('User'))
     eventName = StringField(required=True)
     totalExpense = IntField()
-    createdAt = DateTimeField()
-    updatedAt = DateTimeField()
-    createdBy = ReferenceField('User')
-    updateBy = ReferenceField('User')
+    createdAt = DateTimeField(required=True)
+    updatedAt = DateTimeField(required=True)
+    createdBy = ReferenceField('User',required=True)
+    updatedBy = ReferenceField('User',required=True)
     expenses = ListField(ReferenceField('Expense'))
 
-class Expense(Document,JSONSerializer):
+class Expense(JSONSerializer,Document):
     expenseName = StringField(required=True)
-    amount = IntField()
-    paidBy = ReferenceField('User')
+    amount = IntField(required=True)
+    paidBy = ReferenceField('User',required=True)
     shares = ListField(ReferenceField('Share'))
-    createdAt = DateTimeField()
-    updatedAt = DateTimeField()
-    createdBy = ReferenceField('User')
-    updatedBy = ReferenceField('User')
+    createdAt = DateTimeField(required=True)
+    updatedAt = DateTimeField(required=True)
+    createdBy = ReferenceField('User',required=True)
+    updatedBy = ReferenceField('User',required=True)
 
-class Share(Document,JSONSerializer):
-    _id = StringField(required=True, primary_key=True)
+class Share(JSONSerializer,Document):
     amount = IntField()
     userId = ReferenceField('User')
     eventId = ReferenceField('Event')

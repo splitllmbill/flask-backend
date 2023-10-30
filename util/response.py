@@ -19,11 +19,14 @@ def flaskResponse(status, response = None):
         if response == False:
             defaultResponse['message'] = 'No record found for id'
             response = defaultResponse
-
+        if response == True:
+            defaultResponse['message'] = 'Record with given id successfully deleted'
+            response = defaultResponse
+        
         if type(response) == dict:
             response = json.dumps(response)
         else: 
-            response = response.to_json()      
+            response = json.dumps(response.to_json())
 
         return Response(response, status=200, mimetype="application/json")
     
@@ -42,6 +45,6 @@ def flaskResponse(status, response = None):
     if status == ResponseStatus.INTERNAL_SERVER_ERROR:
         defaultResponse['message'] = 'Internal Server Error'
         if response != None:
-            defaultResponse['message'] = 'Success'
+            defaultResponse['message'] = 'Error'
             defaultResponse['error'] = response
-        return Response(response=json.dumps(defaultResponse), status=401, mimetype="application/json")
+        return Response(response=json.dumps(defaultResponse), status=500, mimetype="application/json")

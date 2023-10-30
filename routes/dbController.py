@@ -111,7 +111,7 @@ def loginUser():
                     toUpdate['token'], toUpdate['updatedAt'] = token, datetime.datetime.utcnow
                     dbManager.update(user,**toUpdate)         
                     del user.id, user.password, user.createdAt, user.updatedAt, user.account
-                    return Response(response=user.to_json(), status=200, mimetype="application/json")
+                    return flaskResponse(ResponseStatus.SUCCESS, user)
             else:
                 resp = {'message': 'Authentication Failed. Account does not exist'}
                 return Response(response=json.dumps(resp), status=401, mimetype="application/json")
@@ -155,25 +155,27 @@ def updateAccount(userId):
 
 @db_route.route('/expense/<expenseId>', methods = ['GET'])
 @requestHandler
-def getExpenseById(userId, expenseId):
+def getExpenseById(userId, request, expenseId):
     expense = expenseService.getExpenseById(expenseId)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
 
 @db_route.route('/expense', methods = ['POST'])
 @requestHandler
-def createExpense(userId):
-    expense = expenseService.createExpense()
+def createExpense(userId, request):
+    requestData = request.get_json()
+    expense = expenseService.createExpense(userId,requestData)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
 
 @db_route.route('/expense/<expenseId>', methods = ['PUT'])
 @requestHandler
-def updateExpense(userId, expenseId):
-    expense = expenseService.updateExpense()
+def updateExpense(userId, request, expenseId):
+    requestData = request.get_json()
+    expense = expenseService.updateExpense(expenseId,requestData)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
 
 @db_route.route('/expense/<expenseId>', methods = ['DELETE'])
 @requestHandler
-def deleteExpense(userId, expenseId):
+def deleteExpense(userId, request, expenseId):
     status = expenseService.deleteExpense(expenseId)
     return flaskResponse(ResponseStatus.SUCCESS,status)
     
