@@ -19,8 +19,8 @@ def flaskResponse(status, response = None):
         if response == False:
             defaultResponse['message'] = 'No record found for id'
             response = defaultResponse
-        if response == True:
-            defaultResponse['message'] = 'Record with given id successfully deleted'
+        if type(response) == str:
+            defaultResponse['message'] = 'Record with given id successfully ' + response + 'd'
             response = defaultResponse
         
         if type(response) == dict:

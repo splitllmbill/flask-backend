@@ -85,12 +85,13 @@ class JSONSerializer:
                     else:
                         ref_list.append(f"{ref_collection} ({ref_id})")
                 json_data[key] = ref_list
+            elif isinstance(value, list) and all(isinstance(item, ObjectId) for item in value):
+                json_data[key] = [str(item) for item in value]
             elif isinstance(value, datetime):
                 json_data[key] = value.isoformat()
             else:
                 if value is not None:
                     json_data[key] = value
-        
         return json_data
     
 class User(JSONSerializer,Document):
@@ -131,6 +132,6 @@ class Expense(JSONSerializer,Document):
     updatedBy = ReferenceField('User',required=True)
 
 class Share(JSONSerializer,Document):
-    amount = IntField()
-    userId = ReferenceField('User')
+    amount = IntField(required=True)
+    userId = ReferenceField('User',required=True)
     eventId = ReferenceField('Event')

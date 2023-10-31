@@ -79,7 +79,7 @@ def signup():
             toUpdate['account'] = new_account.id
             dbManager.update(new_user,**toUpdate)
             del new_user.createdAt, new_user.updatedAt, new_user.password, new_user.account
-            return Response(response=new_user.to_json(), status=201, mimetype="application/json")
+            return Response(response=json.dumps(new_user.to_json()), status=201, mimetype="application/json")
         except NotUniqueError as e:
             resp = {'message': 'Email address is already in use. Please choose another.'}
             print(e,resp)
@@ -170,7 +170,7 @@ def createExpense(userId, request):
 @requestHandler
 def updateExpense(userId, request, expenseId):
     requestData = request.get_json()
-    expense = expenseService.updateExpense(expenseId,requestData)
+    expense = expenseService.updateExpense(userId,expenseId,requestData)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
 
 @db_route.route('/expense/<expenseId>', methods = ['DELETE'])
