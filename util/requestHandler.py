@@ -10,7 +10,7 @@ def requestHandler(function):
     def decorated_function(*args, **kwargs):
         try:
             userId = validate_jwt_token(request)
-            return function(userId, *args, **kwargs)
+            return function(userId, request, *args, **kwargs)
         except jwt.PyJWTError as e:
             print(e)
             return flaskResponse(ResponseStatus.INVALID_TOKEN)
