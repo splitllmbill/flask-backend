@@ -1,4 +1,4 @@
-from models.common import DatabaseManager,Expense, Share
+from models.common import DatabaseManager,Expense,Event, Share
 from datetime import datetime as dt
 from bson import ObjectId
 
@@ -75,4 +75,20 @@ def deleteExpense(expenseId):
     dbManager.delete(expense)
     return 'delete'
 
+def getEventExpenses(eventId):
+    query = {
+        "id": eventId
+    }
+    event = dbManager.findOne(Event,query)
+    if event is None:
+        raise Exception(ValueError)
+    
+    expense_ids=[]
+    for expense in event.expenses:
+        expense_ids.append(str(expense.id))
 
+    query={
+        "id__in":expense_ids
+    }
+    expenses=dbManager.findAll(Expense,query)
+    return expenses

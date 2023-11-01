@@ -2,12 +2,15 @@ import datetime
 import json
 from bson import ObjectId
 from flask import Blueprint, request, Response, current_app
+from werkzeug.exceptions import BadRequest
+from util.response import ResponseStatus, flaskResponse
+from mongoengine.queryset.visitor import Q
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
 
-from services import expenseService
+from services import expenseService,eventService,shareService
 from models.common import Account, DatabaseManager,User
 from util.auth import validate_jwt_token
 from util.response import ResponseStatus, flaskResponse
@@ -23,40 +26,79 @@ ph = PasswordHasher()
 def getUserById(user_id):
     if request.method == 'GET':
         try:
-            query={"_id":ObjectId(user_id)}
+            validate_jwt_token(request)
+            query={"id":ObjectId(user_id)}
             user = dbManager.findOne(User,query)
             r = Response(response=user.to_json(), status=200, mimetype="application/json")
-        except:
-            r = Response(response='{"message":"bad request"}', status=400, mimetype="application/json")
+
+        except jwt.PyJWTError as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
+        
+        except (BadRequest,ValueError) as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+    else:
+        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
     return r
 
 @db_route.route('/user-by-email/<email_id>', methods=['GET'])
 def getUserByEmailId(email_id):
-    try:
-        if request.method == 'GET':
+    if request.method == 'GET':
+        try:  
+            # validate_jwt_token(request)
             print(email_id)
             query={"email":email_id}
             user = dbManager.findOne(User,query)
             r = Response(response=user.to_json(), status=200, mimetype="application/json")
-    except:
-        r = Response(response='{"message":"bad request"}', status=400, mimetype="application/json")
+
+        except jwt.PyJWTError as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
+        
+        except (BadRequest,ValueError) as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+    else:
+        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
     return r
 
 @db_route.route('/user', methods=['PUT'])
 def UpdateUser():
     if request.method == 'PUT':
-        try:      
+        try:
+            validate_jwt_token(request)      
             input = json.loads(request.data)  
-            user_id=input["_id"] 
+            user_id=input["id"] 
             print(type(user_id))
-            query={"_id":ObjectId(user_id)}
+            query={"id":ObjectId(user_id)}
             user = dbManager.findOne(User,query)
             input["updatedAt"]=datetime.datetime.utcnow
             dbManager.update(user, **input)
             print("User updated details:", user)
             r = Response(response=user.to_json(), status=200, mimetype="application/json")
-        except:
-            r = Response(response='{"message":"bad request"}', status=400, mimetype="application/json")
+        except jwt.PyJWTError as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
+    
+        except (BadRequest,ValueError) as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+
+    else:
+        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
     return r
 
 @db_route.route('/signup', methods=['POST'])
@@ -179,6 +221,95 @@ def deleteExpense(userId, request, expenseId):
     status = expenseService.deleteExpense(expenseId)
     return flaskResponse(ResponseStatus.SUCCESS,status)
     
+
+@db_route.route('user/<user_id>/events', methods=['GET'])
+def getUserEvents(user_id):
+    if request.method == 'GET':
+        try:   
+            session_user_id = validate_jwt_token(request)
+            events=eventService.getUserEvents(user_id)
+            return Response(response=events.to_json(), status=200, mimetype="application/json")
+        except jwt.PyJWTError as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
+        
+        except (BadRequest,ValueError) as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+    else:
+        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
+    return r
+
+@db_route.route('event/<event_id>/expenses', methods=['GET'])
+def getEventExpenses(event_id):
+    if request.method == 'GET':
+        try:   
+            session_user_id = validate_jwt_token(request)
+            expenses=expenseService.getEventExpenses(event_id)
+            return Response(response=expenses.to_json(), status=200, mimetype="application/json")
+        except jwt.PyJWTError as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
+        
+        except (BadRequest,ValueError) as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+    else:
+        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
+    return r
+
+@db_route.route('expense/<expense_id>/shares', methods=['GET'])
+def getExpenseShares(expense_id):
+    if request.method == 'GET':
+        try:   
+            session_user_id = validate_jwt_token(request)
+            shares=shareService.getExpenseShares(expense_id)
+            return Response(response=shares.to_json(), status=200, mimetype="application/json")
+        except jwt.PyJWTError as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
+        
+        except (BadRequest,ValueError) as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+    else:
+        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
+    return r
+
+
+@db_route.route('event/<event_id>/dues', methods=['GET'])
+def getExpenseDues(event_id):
+    if request.method == 'GET':
+        try:   
+            session_user_id = validate_jwt_token(request)
+            result=eventService.getEventDues(event_id)
+            return Response(response=json.dumps(result), status=200, mimetype="application/json")
+        except jwt.PyJWTError as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
+        
+        except (BadRequest,ValueError) as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+    else:
+        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
+    return r
 
 # using model findall or find with query (use for custom queries)
 # @db_route.route('/userList', methods=['GET'])

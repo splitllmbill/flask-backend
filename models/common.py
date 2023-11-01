@@ -111,14 +111,14 @@ class Account(JSONSerializer,Document):
     createdAt = DateTimeField()
     updatedAt = DateTimeField()
     
-class Event(JSONSerializer,Document):
+class Event(Document,JSONSerializer):
     users = ListField(ReferenceField('User'))
     eventName = StringField(required=True)
     totalExpense = IntField()
-    createdAt = DateTimeField(required=True)
-    updatedAt = DateTimeField(required=True)
-    createdBy = ReferenceField('User',required=True)
-    updatedBy = ReferenceField('User',required=True)
+    createdAt = DateTimeField()
+    updatedAt = DateTimeField()
+    createdBy = ReferenceField('User')
+    updatedBy = ReferenceField('User')
     expenses = ListField(ReferenceField('Expense'))
 
 class Expense(JSONSerializer,Document):
@@ -131,7 +131,7 @@ class Expense(JSONSerializer,Document):
     createdBy = ReferenceField('User',required=True)
     updatedBy = ReferenceField('User',required=True)
 
-class Share(JSONSerializer,Document):
-    amount = IntField(required=True)
-    userId = ReferenceField('User',required=True)
+class Share(Document,JSONSerializer):
+    amount = IntField()
+    userId = ReferenceField('User')
     eventId = ReferenceField('Event')
