@@ -248,7 +248,7 @@ def getUserEvents(user_id):
 def getEventExpenses(event_id):
     if request.method == 'GET':
         try:   
-            # session_user_id = validate_jwt_token(request)
+            session_user_id = validate_jwt_token(request)
             expenses=expenseService.getEventExpenses(event_id)
             return Response(response=expenses.to_json(), status=200, mimetype="application/json")
         except jwt.PyJWTError as e:
@@ -270,7 +270,7 @@ def getEventExpenses(event_id):
 def getExpenseShares(expense_id):
     if request.method == 'GET':
         try:   
-            # session_user_id = validate_jwt_token(request)
+            session_user_id = validate_jwt_token(request)
             shares=shareService.getExpenseShares(expense_id)
             return Response(response=shares.to_json(), status=200, mimetype="application/json")
         except jwt.PyJWTError as e:
@@ -293,7 +293,7 @@ def getExpenseShares(expense_id):
 def getExpenseDues(event_id):
     if request.method == 'GET':
         try:   
-            # session_user_id = validate_jwt_token(request)
+            session_user_id = validate_jwt_token(request)
             result=eventService.getEventDues(event_id)
             return Response(response=json.dumps(result), status=200, mimetype="application/json")
         except jwt.PyJWTError as e:

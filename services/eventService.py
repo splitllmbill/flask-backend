@@ -1,5 +1,5 @@
 from models.common import DatabaseManager,Event
-from services import expenseService,eventService,shareService
+from services import expenseService,eventService,shareService,userService
 dbManager = DatabaseManager()
 dbManager.connect()
 
@@ -17,25 +17,20 @@ def getEventDues(event_id):
     event = dbManager.findOne(Event,query)
     if event is None:
         raise Exception(ValueError)
-    
+   
     user_balances={}
     for user in event.users:
-        print(user.id)
         user_balances[user.id]=0
     
     expenses=expenseService.getEventExpenses(event.id)
     for expense in expenses:
-        print("nob",expense.id)
-        # print("noob:",expense.to_mongo())
         payerId =expense.paidBy.id
-        
         shares=shareService.getExpenseShares(expense.id)
         print(shares)
         user_payees = {share.userId.id: [] for share in shares}
         amounts_owed = {share.userId.id: {} for share in shares}
         for share in shares:
             shareAmount = share.amount
-            print("shareamount:",shareAmount)
             participantId= share.userId.id
             if participantId!=payerId:
                 user_balances[participantId] += shareAmount
@@ -46,9 +41,11 @@ def getEventDues(event_id):
     userNameMap={}
     for user, debts in amounts_owed.items():
         for payee, amount in debts.items():
-            print("ampunt",amount)
+            if user not in userNameMap:
+                userNameMap[str(user)]=userService.getUserNameById(user)
+            if payee not in userNameMap:
+                userNameMap[str(payee)]=userService.getUserNameById(payee)
             temp={}
-            temp[str(payee)]=amount
-            result[str(user)]=temp
-       # print(f'{user} owes {amount} to {payee}')
+            temp[userNameMap[str(payee)]]=amount
+            result[userNameMap[str(user)]]=temp
     return result
