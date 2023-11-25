@@ -1,4 +1,5 @@
 from models.common import DatabaseManager,Event
+from resources.common import CreditorDetail,EventDue,EventDueSummary
 from services import expenseService,eventService,shareService,userService
 dbManager = DatabaseManager()
 dbManager.connect()
@@ -46,6 +47,33 @@ def getEventDues(event_id):
             if payee not in userNameMap:
                 userNameMap[str(payee)]=userService.getUserNameById(payee)
             temp={}
-            temp[userNameMap[str(payee)]]=amount
-            result[userNameMap[str(user)]]=temp
+            temp[str(payee)]=amount
+            result[str(user)]=temp
+
+    eventDues=[]
+    for debtor in result:
+        debtorName=userNameMap[str(debtor)]
+        creditorDetails=[]
+        for creditor in result[debtor]:
+            creditorName = userNameMap[str(creditor)]
+            amount=result[debtor][creditor]
+            creditorDetails.append(CreditorDetail(creditor,creditorName,amount))
+        eventDues.append(EventDue(debtor,debtorName,creditorDetails))
+    finalResult=EventDueSummary(eventDues)
+
+    return finalResult
+
+
+def getEventDuesForUser(event_id,user_id):
+    result={"inDebtTo":{},"isOwed":{}}
+    eventDues=getEventDues(event_id)
+    userName=userService.getUserNameById(user_id)
+    for personInDebt in eventDues:
+        if personInDebt == user_id:
+           result["inDebtTo"]=eventDues[personInDebt]
+        else:
+            for owedPerson in eventDues[personInDebt]:
+                if owedPerson==user_id:
+                    result["isOwed"][personInDebt]= eventDues[personInDebt][owedPerson]
     return result
+               

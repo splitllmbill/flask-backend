@@ -290,12 +290,12 @@ def getExpenseShares(expense_id):
 
 
 @db_route.route('event/<event_id>/dues', methods=['GET'])
-def getExpenseDues(event_id):
+def getEventDues(event_id):
     if request.method == 'GET':
         try:   
             session_user_id = validate_jwt_token(request)
             result=eventService.getEventDues(event_id)
-            return Response(response=json.dumps(result), status=200, mimetype="application/json")
+            return Response(response=result.eventDues, status=200, mimetype="application/json")
         except jwt.PyJWTError as e:
             print(e)
             r = flaskResponse(ResponseStatus.INVALID_TOKEN)
@@ -311,6 +311,27 @@ def getExpenseDues(event_id):
         r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
     return r
 
+@db_route.route('user/<user_id>/event/<event_id>/dues', methods=['GET'])
+def getEventDuesForUser(user_id,event_id):
+    if request.method == 'GET':
+        try:   
+            session_user_id = validate_jwt_token(request)
+            result=eventService.getEventDuesForUser(event_id,user_id)
+            return Response(response=json.dumps(result), status=200, mimetype="application/json")
+        except jwt.PyJWTError as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
+        
+        except (BadRequest,ValueError) as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+    else:
+        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
+    return r
 # using model findall or find with query (use for custom queries)
 # @db_route.route('/userList', methods=['GET'])
 # def userList():

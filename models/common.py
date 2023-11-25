@@ -124,6 +124,7 @@ class Event(Document,JSONSerializer):
 class Expense(JSONSerializer,Document):
     expenseName = StringField(required=True)
     amount = IntField(required=True)
+    type = StringField(required=True)
     paidBy = ReferenceField('User',required=True)
     shares = ListField(ReferenceField('Share'))
     createdAt = DateTimeField(required=True)
