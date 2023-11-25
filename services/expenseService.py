@@ -24,6 +24,7 @@ def createExpense(userId, requestData):
         new_shares.append(new_share.id)
     new_expense = Expense(**requestData)
     new_expense.shares = new_shares
+    new_expense.type=requestData["type"]
     new_expense.createdBy = ObjectId(userId)
     new_expense.updatedBy = ObjectId(userId)
     new_expense.createdAt = dt.utcnow()
