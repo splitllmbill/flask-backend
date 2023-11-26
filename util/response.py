@@ -1,6 +1,10 @@
 from flask import Response
 from enum import Enum
 import json
+from collections import OrderedDict
+import mongoengine
+
+from models.common import toJson
  
 class ResponseStatus(Enum):
     SUCCESS = 1
@@ -24,10 +28,10 @@ def flaskResponse(status, response = None):
             defaultResponse['message'] = 'Record with given id successfully ' + response + 'd'
             response = defaultResponse
         
-        if type(response) == dict:
+        if type(response) == dict or type(response) == list :
             response = json.dumps(response)
         else: 
-            response = json.dumps(response.to_json())
+            response = json.dumps(toJson(response))
 
         return Response(response, status=200, mimetype="application/json")
     
