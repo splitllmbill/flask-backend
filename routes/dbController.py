@@ -11,7 +11,7 @@ from mongoengine.errors import NotUniqueError
 import jwt
 
 from services import expenseService,eventService,shareService
-from models.common import Account, DatabaseManager,User
+from models.common import Account, DatabaseManager,User, toJson
 from util.auth import validate_jwt_token
 from util.response import ResponseStatus, flaskResponse
 from util.requestHandler import requestHandler
@@ -29,7 +29,7 @@ def getUserById(user_id):
             validate_jwt_token(request)
             query={"id":ObjectId(user_id)}
             user = dbManager.findOne(User,query)
-            r = Response(response=user.to_json(), status=200, mimetype="application/json")
+            r=flaskResponse(ResponseStatus.SUCCESS,user)
 
         except jwt.PyJWTError as e:
             print(e)
@@ -54,7 +54,7 @@ def getUserByEmailId(email_id):
             print(email_id)
             query={"email":email_id}
             user = dbManager.findOne(User,query)
-            r = Response(response=user.to_json(), status=200, mimetype="application/json")
+            r=flaskResponse(ResponseStatus.SUCCESS,user)
 
         except jwt.PyJWTError as e:
             print(e)
@@ -84,7 +84,7 @@ def UpdateUser():
             input["updatedAt"]=datetime.datetime.utcnow
             dbManager.update(user, **input)
             print("User updated details:", user)
-            r = Response(response=user.to_json(), status=200, mimetype="application/json")
+            r = Response(response=toJson(user), status=200, mimetype="application/json")
         except jwt.PyJWTError as e:
             print(e)
             r = flaskResponse(ResponseStatus.INVALID_TOKEN)
@@ -121,7 +121,7 @@ def signup():
             toUpdate['account'] = new_account.id
             dbManager.update(new_user,**toUpdate)
             del new_user.createdAt, new_user.updatedAt, new_user.password, new_user.account
-            return Response(response=json.dumps(new_user.to_json()), status=201, mimetype="application/json")
+            return Response(response=json.dumps(toJson(new_user)), status=201, mimetype="application/json")
         except NotUniqueError as e:
             resp = {'message': 'Email address is already in use. Please choose another.'}
             print(e,resp)
@@ -228,7 +228,7 @@ def getUserEvents(user_id):
         try:   
             session_user_id = validate_jwt_token(request)
             events=eventService.getUserEvents(user_id)
-            return Response(response=events.to_json(), status=200, mimetype="application/json")
+            return flaskResponse(ResponseStatus.SUCCESS,[toJson(event) for event in events])
         except jwt.PyJWTError as e:
             print(e)
             r = flaskResponse(ResponseStatus.INVALID_TOKEN)
@@ -250,7 +250,7 @@ def getEventExpenses(event_id):
         try:   
             session_user_id = validate_jwt_token(request)
             expenses=expenseService.getEventExpenses(event_id)
-            return Response(response=expenses.to_json(), status=200, mimetype="application/json")
+            return flaskResponse(ResponseStatus.SUCCESS,[toJson(expense) for expense in expenses])
         except jwt.PyJWTError as e:
             print(e)
             r = flaskResponse(ResponseStatus.INVALID_TOKEN)
@@ -260,7 +260,7 @@ def getEventExpenses(event_id):
             r = flaskResponse(ResponseStatus.BAD_REQUEST)
 
         except Exception as e:
-            print(e)
+            print(e,e.with_traceback)
             r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
     else:
         r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
@@ -272,7 +272,7 @@ def getExpenseShares(expense_id):
         try:   
             session_user_id = validate_jwt_token(request)
             shares=shareService.getExpenseShares(expense_id)
-            return Response(response=shares.to_json(), status=200, mimetype="application/json")
+            return flaskResponse(ResponseStatus.SUCCESS,[toJson(share) for share in shares])
         except jwt.PyJWTError as e:
             print(e)
             r = flaskResponse(ResponseStatus.INVALID_TOKEN)
@@ -295,7 +295,7 @@ def getEventDues(event_id):
         try:   
             session_user_id = validate_jwt_token(request)
             result=eventService.getEventDues(event_id)
-            return Response(response=result.eventDues, status=200, mimetype="application/json")
+            r= flaskResponse(ResponseStatus.SUCCESS,result.__dict__)
         except jwt.PyJWTError as e:
             print(e)
             r = flaskResponse(ResponseStatus.INVALID_TOKEN)
@@ -317,7 +317,7 @@ def getEventDuesForUser(user_id,event_id):
         try:   
             session_user_id = validate_jwt_token(request)
             result=eventService.getEventDuesForUser(event_id,user_id)
-            return Response(response=json.dumps(result), status=200, mimetype="application/json")
+            return flaskResponse(ResponseStatus.SUCCESS,result)
         except jwt.PyJWTError as e:
             print(e)
             r = flaskResponse(ResponseStatus.INVALID_TOKEN)
@@ -332,6 +332,73 @@ def getEventDuesForUser(user_id,event_id):
     else:
         r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
     return r
+
+@db_route.route('/event', methods=['POST'])
+def createEvent():
+    if request.method == 'POST':
+        try:   
+            session_user_id = validate_jwt_token(request)
+            requestData = request.get_json()
+            if "id" in requestData.keys():
+                del(requestData["id"])
+            result=eventService.saveEvent(session_user_id,requestData)
+            r=flaskResponse(ResponseStatus.SUCCESS,result)
+        except jwt.PyJWTError as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
+        
+        except (BadRequest,ValueError) as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+    else:
+        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
+    return r
+
+@db_route.route('/event', methods=['PUT'])
+def updateEvent():
+    if request.method == 'PUT':
+        try:   
+            session_user_id = validate_jwt_token(request)
+            requestData = request.get_json()
+            if "id" not in requestData.keys():
+                r = flaskResponse(ResponseStatus.BAD_REQUEST)
+                return
+            result=eventService.saveEvent(session_user_id,requestData)
+            r=flaskResponse(ResponseStatus.SUCCESS,result)
+        except jwt.PyJWTError as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
+        
+        except (BadRequest,ValueError) as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+    else:
+        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
+    return r
+
+@db_route.route('/event/<event_id>', methods=['GET'])
+def getEvent(event_id):
+    session_user_id = validate_jwt_token(request)
+    event=eventService.getEventByID(event_id)
+    r=flaskResponse(ResponseStatus.SUCCESS,event)
+    return r
+
+@db_route.route('/event/<event_id>', methods=['DELETE'])
+def deleteEvent(event_id):
+    session_user_id = validate_jwt_token(request)
+    result=eventService.deleteEvent(event_id)
+    r=flaskResponse(ResponseStatus.SUCCESS,result)
+    return r
+
+
 # using model findall or find with query (use for custom queries)
 # @db_route.route('/userList', methods=['GET'])
 # def userList():

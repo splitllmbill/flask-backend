@@ -49,52 +49,62 @@ class DatabaseManager:
         if document:
             document.delete()
             
-class JSONSerializer:
-    def to_json(self):
-        json_data = {}
-        for key, value in self._data.items():
-            if isinstance(value, ObjectId):
-                json_data[key] = str(value)
-            elif isinstance(value, Timestamp):
-                json_data[key] = {
-                    "seconds": value.time,
-                    "ordinal": value.inc
-                }
-            elif isinstance(value, DBRef):
-                ref_collection = value.collection
-                ref_id = value.id
-                if ref_collection == 'user':
-                    user = User.objects(id=ref_id).first()
-                    if user:
-                        json_data[key] = user.name
-                elif ref_collection == 'event':
-                    event = Event.objects(id=ref_id).first()
-                    if event:
-                        json_data[key] = event.eventName
-                else:
-                    json_data[key] = f"{ref_collection} ({ref_id})"
-            elif isinstance(value, list) and all(isinstance(item, DBRef) for item in value):
-                ref_list = []
-                for ref in value:
-                    ref_collection = ref.collection
-                    ref_id = ref.id
-                    if ref_collection == 'share':
-                        share = Share.objects(id=ref_id).first()
-                        if share:
-                            ref_list.append(share.to_json())
-                    else:
-                        ref_list.append(f"{ref_collection} ({ref_id})")
-                json_data[key] = ref_list
-            elif isinstance(value, list) and all(isinstance(item, ObjectId) for item in value):
-                json_data[key] = [str(item) for item in value]
-            elif isinstance(value, datetime):
-                json_data[key] = value.isoformat()
+def toJson(obj):
+    json_data = {}
+    for key, value in obj._data.items():
+        print(key)
+        if isinstance(value, ObjectId):
+            json_data[key] = str(value)
+        elif isinstance(value, Timestamp):
+            json_data[key] = {
+                "seconds": value.time,
+                "ordinal": value.inc
+            }
+        elif isinstance(value, DBRef):
+            ref_collection = value.collection
+            ref_id = value.id
+            if ref_collection == 'user':
+                user = User.objects(id=ref_id).first()
+                if user:
+                    json_data[key] = user.name
+            elif ref_collection == 'event':
+                event = Event.objects(id=ref_id).first()
+                if event:
+                    json_data[key] = event.eventName
             else:
-                if value is not None:
-                    json_data[key] = value
-        return json_data
+                json_data[key] = f"{ref_collection} ({ref_id})"
+        elif isinstance(value, list) and all(isinstance(item, DBRef) for item in value):
+            print("yaay1")
+            ref_list = []
+            for ref in value:
+                ref_collection = ref.collection
+                ref_id = ref.id
+                if ref_collection == 'share':
+                    share = Share.objects(id=ref_id).first()
+                    if share:
+                        ref_list.append(toJson(share))
+                else:
+                    ref_list.append(f"{ref_collection} ({ref_id})")
+            print("ref_list",ref_list)
+            json_data[key] = ref_list
+        elif isinstance(value, list) and all(isinstance(item, ObjectId) for item in value):
+            print("yaay2")
+            json_data[key] = [str(item) for item in value]
+        elif isinstance(value, list):
+            print("yaay3")
+            result=[]
+            for item in value:
+                result.append(toJson(item))
+            json_data[key]=result
+        elif isinstance(value, datetime):
+            json_data[key] = value.isoformat()
+        else:
+            print("yaay4")
+            if value is not None:
+                json_data[key] = value
+    return json_data
     
-class User(JSONSerializer,Document):
+class User(Document):
     name = StringField(required=True)
     email = StringField(required=True,unique=True)
     phoneNumber = IntField()
@@ -104,14 +114,14 @@ class User(JSONSerializer,Document):
     updatedAt = DateTimeField()
     account = ReferenceField('Account')
 
-class Account(JSONSerializer,Document):
+class Account(Document):
     userId = ReferenceField('User')
     upiId = StringField()
     upiNumber = IntField()
     createdAt = DateTimeField()
     updatedAt = DateTimeField()
     
-class Event(Document,JSONSerializer):
+class Event(Document):
     users = ListField(ReferenceField('User'))
     eventName = StringField(required=True)
     totalExpense = IntField()
@@ -121,7 +131,7 @@ class Event(Document,JSONSerializer):
     updatedBy = ReferenceField('User')
     expenses = ListField(ReferenceField('Expense'))
 
-class Expense(JSONSerializer,Document):
+class Expense(Document):
     expenseName = StringField(required=True)
     amount = IntField(required=True)
     type = StringField(required=True)
@@ -132,7 +142,7 @@ class Expense(JSONSerializer,Document):
     createdBy = ReferenceField('User',required=True)
     updatedBy = ReferenceField('User',required=True)
 
-class Share(Document,JSONSerializer):
+class Share(Document):
     amount = IntField()
     userId = ReferenceField('User')
     eventId = ReferenceField('Event')

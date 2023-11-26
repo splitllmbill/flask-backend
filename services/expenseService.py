@@ -2,6 +2,8 @@ from models.common import DatabaseManager,Expense,Event, Share
 from datetime import datetime as dt
 from bson import ObjectId
 
+from resources.common import ExpenseResponse
+
 dbManager = DatabaseManager()
 dbManager.connect()
 
