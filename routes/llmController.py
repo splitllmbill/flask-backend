@@ -61,3 +61,7 @@ def convert_expense():
         max_output_tokens=800,
     )
     return jsonify({'message': 'Expense Processed Successfully', 'llmoutput': json.loads(completion.result)})
+
+@llm_route.route('/home', methods=['GET'])
+def home():
+    return 'Welcome to home page!'
