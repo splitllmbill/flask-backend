@@ -1,6 +1,6 @@
 import uuid
 import os
-import easyocr
+# import easyocr
 from flask import request, jsonify, Blueprint,current_app
 from dotenv import load_dotenv
 import google.generativeai as palm
@@ -8,7 +8,7 @@ import json
 
 llm_route = Blueprint('llm', __name__)
 
-reader = easyocr.Reader(['en'])
+# reader = easyocr.Reader(['en'])
 load_dotenv()
 folder_path='uploads'
 palm.configure(api_key=os.getenv('LLM_API_KEY'))
@@ -25,28 +25,28 @@ def generate_unique_filename(filename):
     unique_filename = str(uuid.uuid4()) + '_' + filename
     return unique_filename
 
-@llm_route.route('/upload', methods=['POST'])
-def upload_file():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file part'})
-    file = request.files['file']
+# @llm_route.route('/upload', methods=['POST'])
+# def upload_file():
+#     if 'file' not in request.files:
+#         return jsonify({'error': 'No file part'})
+#     file = request.files['file']
 
-    if file.filename == '':
-        return jsonify({'error': 'No selected file'})
+#     if file.filename == '':
+#         return jsonify({'error': 'No selected file'})
     
-    create_upload_folder()
-    unique_filename = generate_unique_filename(file.filename)
-    file.save(os.path.join(folder_path, unique_filename))
-    result = reader.readtext(os.path.join(current_app.config['UPLOADS_PATH'], unique_filename),detail=0)
-    prompt = 'Extract necessary information from this bill OCR output data containing all the food items and tax information into a JSON array with objects having properties - slno, item name, quantity, amount and total amount. Bill data: '
-    completion = palm.generate_text(
-        model=model,
-        prompt=prompt+(' '.join(result)),
-        temperature=0,
-        max_output_tokens=800,
-    )
-    print(json.loads(completion.result)[0])
-    return jsonify({'message': 'File uploaded successfully', 'filename': unique_filename, 'ocroutput': json.loads(completion.result)[0]})
+#     create_upload_folder()
+#     unique_filename = generate_unique_filename(file.filename)
+#     file.save(os.path.join(folder_path, unique_filename))
+#     result = reader.readtext(os.path.join(current_app.config['UPLOADS_PATH'], unique_filename),detail=0)
+#     prompt = 'Extract necessary information from this bill OCR output data containing all the food items and tax information into a JSON array with objects having properties - slno, item name, quantity, amount and total amount. Bill data: '
+#     completion = palm.generate_text(
+#         model=model,
+#         prompt=prompt+(' '.join(result)),
+#         temperature=0,
+#         max_output_tokens=800,
+#     )
+#     print(json.loads(completion.result)[0])
+#     return jsonify({'message': 'File uploaded successfully', 'filename': unique_filename, 'ocroutput': json.loads(completion.result)[0]})
     
 @llm_route.route('/expense', methods=['POST'])
 def convert_expense():
