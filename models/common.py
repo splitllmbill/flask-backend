@@ -52,7 +52,6 @@ class DatabaseManager:
 def toJson(obj):
     json_data = {}
     for key, value in obj._data.items():
-        print(key)
         if isinstance(value, ObjectId):
             json_data[key] = str(value)
         elif isinstance(value, Timestamp):
@@ -74,7 +73,6 @@ def toJson(obj):
             else:
                 json_data[key] = f"{ref_collection} ({ref_id})"
         elif isinstance(value, list) and all(isinstance(item, DBRef) for item in value):
-            print("yaay1")
             ref_list = []
             for ref in value:
                 ref_collection = ref.collection
@@ -85,13 +83,10 @@ def toJson(obj):
                         ref_list.append(toJson(share))
                 else:
                     ref_list.append(f"{ref_collection} ({ref_id})")
-            print("ref_list",ref_list)
             json_data[key] = ref_list
         elif isinstance(value, list) and all(isinstance(item, ObjectId) for item in value):
-            print("yaay2")
             json_data[key] = [str(item) for item in value]
         elif isinstance(value, list):
-            print("yaay3")
             result=[]
             for item in value:
                 result.append(toJson(item))
@@ -99,7 +94,6 @@ def toJson(obj):
         elif isinstance(value, datetime):
             json_data[key] = value.isoformat()
         else:
-            print("yaay4")
             if value is not None:
                 json_data[key] = value
     return json_data
