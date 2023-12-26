@@ -201,9 +201,20 @@ def getExpenseById(userId, request, expenseId):
     expense = expenseService.getExpenseById(expenseId)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
 
+@db_route.route('/expenses/personal', methods=['GET'])
+@requestHandler
+def getAllExpensesForUser(userId, request):
+    try:
+        expenses = expenseService.getAllExpensesForUser(userId)
+        return flaskResponse(ResponseStatus.SUCCESS, [toJson(expense) for expense in expenses])
+    except Exception as e:
+        print(f"Error in getAllExpensesForUser route: {e}")
+        return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR, str(e))
+
 @db_route.route('/expense', methods = ['POST'])
 @requestHandler
 def createExpense(userId, request):
+    print(request)
     requestData = request.get_json()
     expense = expenseService.createExpense(userId,requestData)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
@@ -220,7 +231,6 @@ def updateExpense(userId, request, expenseId):
 def deleteExpense(userId, request, expenseId):
     status = expenseService.deleteExpense(expenseId)
     return flaskResponse(ResponseStatus.SUCCESS,status)
-    
 
 @db_route.route('user/<user_id>/events', methods=['GET'])
 def getUserEvents(user_id):
