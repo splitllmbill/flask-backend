@@ -135,6 +135,7 @@ class Expense(Document):
     updatedAt = DateTimeField(required=True)
     createdBy = ReferenceField('User',required=True)
     updatedBy = ReferenceField('User',required=True)
+    category = StringField(required=False)   
 
 class Share(Document):
     amount = IntField()

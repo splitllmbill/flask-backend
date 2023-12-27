@@ -4,8 +4,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 from routes.dbController import db_route
 from routes.llmController import llm_route
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # Enable CORS for all routes
 
 # Load environment variables
 load_dotenv()
