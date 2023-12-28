@@ -136,6 +136,7 @@ class Expense(Document):
     createdBy = ReferenceField('User',required=True)
     updatedBy = ReferenceField('User',required=True)
     category = StringField(required=False)   
+    eventId = ReferenceField('Event',required=False)
 
 class Share(Document):
     amount = IntField()

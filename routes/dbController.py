@@ -232,27 +232,13 @@ def deleteExpense(userId, request, expenseId):
     status = expenseService.deleteExpense(expenseId)
     return flaskResponse(ResponseStatus.SUCCESS,status)
 
-@db_route.route('user/<user_id>/events', methods=['GET'])
-def getUserEvents(user_id):
-    if request.method == 'GET':
-        try:   
-            session_user_id = validate_jwt_token(request)
-            events=eventService.getUserEvents(user_id)
-            return flaskResponse(ResponseStatus.SUCCESS,[toJson(event) for event in events])
-        except jwt.PyJWTError as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
-        
-        except (BadRequest,ValueError) as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.BAD_REQUEST)
-
-        except Exception as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
-    else:
-        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
-    return r
+@db_route.route('user/events', methods=['GET'])
+@requestHandler
+def getUserEvents(userId, request):
+        session_user_id = validate_jwt_token(request)
+        events=eventService.getUserEvents(userId)
+        return flaskResponse(ResponseStatus.SUCCESS,[toJson(event) for event in events])
+    
 
 @db_route.route('event/<event_id>/expenses', methods=['GET'])
 def getEventExpenses(event_id):

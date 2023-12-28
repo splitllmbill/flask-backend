@@ -40,7 +40,19 @@ def createExpense(userId, requestData):
     new_expense.createdAt = dt.utcnow()
     new_expense.updatedAt = dt.utcnow()
     new_expense.category = requestData["category"]
-    new_expense.save()
+
+    if requestData['type'] == 'group' and requestData["eventId"]:
+        event = dbManager.findOne(Event, {"id": ObjectId(requestData["eventId"])})
+        if event:
+            new_expense.eventId = ObjectId(requestData["eventId"])
+            new_expense.save()  # Save the new expense first
+            event.expenses.append(new_expense)
+            event.save()  # Save the event after updating its expenses
+        else:
+            raise ValueError("Event not found for the provided eventId")
+    else:
+        new_expense.save()
+
     return new_expense
 
 def updateExpense(userId, expenseId, requestData):
