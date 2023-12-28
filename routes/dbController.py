@@ -291,6 +291,7 @@ def getEventDues(event_id):
         try:   
             session_user_id = validate_jwt_token(request)
             result=eventService.getEventDues(event_id)
+            print(result)
             r= flaskResponse(ResponseStatus.SUCCESS,result.__dict__)
         except jwt.PyJWTError as e:
             print(e)
@@ -301,33 +302,18 @@ def getEventDues(event_id):
             r = flaskResponse(ResponseStatus.BAD_REQUEST)
 
         except Exception as e:
-            print(e)
+            print('is this here',e)
             r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
     else:
         r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
     return r
 
-@db_route.route('user/<user_id>/event/<event_id>/dues', methods=['GET'])
-def getEventDuesForUser(user_id,event_id):
-    if request.method == 'GET':
-        try:   
-            session_user_id = validate_jwt_token(request)
-            result=eventService.getEventDuesForUser(event_id,user_id)
-            return flaskResponse(ResponseStatus.SUCCESS,result)
-        except jwt.PyJWTError as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
-        
-        except (BadRequest,ValueError) as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.BAD_REQUEST)
-
-        except Exception as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
-    else:
-        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
-    return r
+@db_route.route('user/event/<event_id>/dues', methods=['GET'])
+@requestHandler
+def getEventDuesForUser(user_id,request,event_id):
+    session_user_id = validate_jwt_token(request)
+    result=eventService.getEventDuesForUser(event_id,user_id)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('/event', methods=['POST'])
 def createEvent():
