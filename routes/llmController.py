@@ -64,4 +64,4 @@ def convert_expense():
 
 @llm_route.route('/home', methods=['GET'])
 def home():
-    return 'Welcome to home page!'
+    return 'Welcome to home'
