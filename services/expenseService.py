@@ -1,15 +1,6 @@
-from django.http import JsonResponse
-from django.core.serializers import serialize
 from models.common import DatabaseManager,Expense,Event, Share
 from datetime import datetime as dt
 from bson import ObjectId
-from mongoengine.queryset.visitor import Q
-import os
-import django
-from resources.common import ExpenseResponse
-
-# os.environ.setdefault("DJANGO_SETTINGS_MODULE", "FLASK-BACKEND.settings")
-# django.setup()
 
 dbManager = DatabaseManager()
 dbManager.connect()
