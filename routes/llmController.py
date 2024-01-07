@@ -1,14 +1,7 @@
-from csv import reader
 import uuid
 import os
-# import easyocr
-from flask import request, jsonify, Blueprint,current_app
-from dotenv import load_dotenv
+from flask import request, jsonify, Blueprint
 import json
-import pathlib
-import textwrap
-from markdown import Markdown
-import pandas as pd
 import google.generativeai as LLM
 import PIL.Image
 
