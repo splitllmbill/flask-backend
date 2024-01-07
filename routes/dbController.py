@@ -232,27 +232,13 @@ def deleteExpense(userId, request, expenseId):
     status = expenseService.deleteExpense(expenseId)
     return flaskResponse(ResponseStatus.SUCCESS,status)
 
-@db_route.route('user/<user_id>/events', methods=['GET'])
-def getUserEvents(user_id):
-    if request.method == 'GET':
-        try:   
-            session_user_id = validate_jwt_token(request)
-            events=eventService.getUserEvents(user_id)
-            return flaskResponse(ResponseStatus.SUCCESS,[toJson(event) for event in events])
-        except jwt.PyJWTError as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
-        
-        except (BadRequest,ValueError) as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.BAD_REQUEST)
-
-        except Exception as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
-    else:
-        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
-    return r
+@db_route.route('user/events', methods=['GET'])
+@requestHandler
+def getUserEvents(userId, request):
+        session_user_id = validate_jwt_token(request)
+        events=eventService.getUserEvents(userId)
+        return flaskResponse(ResponseStatus.SUCCESS,[toJson(event) for event in events])
+    
 
 @db_route.route('event/<event_id>/expenses', methods=['GET'])
 def getEventExpenses(event_id):
@@ -305,6 +291,7 @@ def getEventDues(event_id):
         try:   
             session_user_id = validate_jwt_token(request)
             result=eventService.getEventDues(event_id)
+            print(result)
             r= flaskResponse(ResponseStatus.SUCCESS,result.__dict__)
         except jwt.PyJWTError as e:
             print(e)
@@ -321,27 +308,12 @@ def getEventDues(event_id):
         r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
     return r
 
-@db_route.route('user/<user_id>/event/<event_id>/dues', methods=['GET'])
-def getEventDuesForUser(user_id,event_id):
-    if request.method == 'GET':
-        try:   
-            session_user_id = validate_jwt_token(request)
-            result=eventService.getEventDuesForUser(event_id,user_id)
-            return flaskResponse(ResponseStatus.SUCCESS,result)
-        except jwt.PyJWTError as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
-        
-        except (BadRequest,ValueError) as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.BAD_REQUEST)
-
-        except Exception as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
-    else:
-        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
-    return r
+@db_route.route('user/event/<event_id>/dues', methods=['GET'])
+@requestHandler
+def getEventDuesForUser(user_id,request,event_id):
+    session_user_id = validate_jwt_token(request)
+    result=eventService.getEventDuesForUser(event_id,user_id)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('/event', methods=['POST'])
 def createEvent():
@@ -407,62 +379,3 @@ def deleteEvent(event_id):
     result=eventService.deleteEvent(event_id)
     r=flaskResponse(ResponseStatus.SUCCESS,result)
     return r
-
-
-# using model findall or find with query (use for custom queries)
-# @db_route.route('/userList', methods=['GET'])
-# def userList():
-#     if request.method == 'GET':
-#         query = Q(name='sivaganesh')
-#         users =User.objects(query)
-#         r = Response(response=users.to_json(), status=200, mimetype="application/json")
-#     return r
-
-# # using model to save
-# @db_route.route('/createUser', methods=['POST'])
-# def createUser():
-#     if request.method == 'POST':
-#         user = User(name='sivaganesh',email='s@g.com',password='hello')
-#         user.save()
-#         r = Response(response=user.to_json(), status=200, mimetype="application/json")
-#     return r
-# # usin db manager to findall
-# @db_route.route('/user', methods=['GET'])
-# def user():
-#     if request.method == 'GET':
-#         users = dbManager.findAll(User)
-#         r = Response(response=users.to_json(), status=200, mimetype="application/json")
-#     return r
-
-# more examples using db manager
-
-# user_data = {
-#     'name': 'John Doe',
-#     'email': 'john@example.com',
-#     'phoneNumber': 1234567890,
-#     'password': 'password123',
-#     'token': 'random_token',
-#     'createdAt': datetime.utcnow(),
-#     'updatedAt': datetime.utcnow(),
-# }
-
-# # Save a user
-# user = User(**user_data)
-# db_manager.save(User, **user_data)
-
-# # Find all users
-# all_users = db_manager.findAll(User)
-# print("All Users:", all_users)
-
-# # Find one user by name
-# query = {'name': 'John Doe'}
-# user = db_manager.findOne(User, query)
-# print("User found by name:", user)
-
-# # Update user details
-# updated_user_data = {'phoneNumber': 9876543210}
-# db_manager.update(user, **updated_user_data)
-# print("User updated details:", user)
-
-# # Delete a user
-# db_manager.delete(user)

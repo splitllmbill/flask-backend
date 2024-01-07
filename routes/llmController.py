@@ -1,19 +1,24 @@
+from csv import reader
 import uuid
 import os
 # import easyocr
 from flask import request, jsonify, Blueprint,current_app
 from dotenv import load_dotenv
-import google.generativeai as palm
 import json
+import pathlib
+import textwrap
+from markdown import Markdown
+import pandas as pd
+import google.generativeai as LLM
+import PIL.Image
 
 llm_route = Blueprint('llm', __name__)
 
-# reader = easyocr.Reader(['en'])
-load_dotenv()
 folder_path='uploads'
-palm.configure(api_key=os.getenv('LLM_API_KEY'))
-models = [m for m in palm.list_models() if 'generateText' in m.supported_generation_methods]
-model = models[0].name
+LLM.configure(api_key=os.getenv('LLM_API_KEY'))
+models = [m.name for m in LLM.list_models()]
+text_model = models[3]
+ocr_model = models[4]
 
 # Function to check if the folder for uploads exists, and create it if not
 def create_upload_folder():
@@ -25,28 +30,26 @@ def generate_unique_filename(filename):
     unique_filename = str(uuid.uuid4()) + '_' + filename
     return unique_filename
 
-# @llm_route.route('/upload', methods=['POST'])
-# def upload_file():
-#     if 'file' not in request.files:
-#         return jsonify({'error': 'No file part'})
-#     file = request.files['file']
+@llm_route.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'})
+    file = request.files['file']
 
-#     if file.filename == '':
-#         return jsonify({'error': 'No selected file'})
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'})
     
-#     create_upload_folder()
-#     unique_filename = generate_unique_filename(file.filename)
-#     file.save(os.path.join(folder_path, unique_filename))
-#     result = reader.readtext(os.path.join(current_app.config['UPLOADS_PATH'], unique_filename),detail=0)
-#     prompt = 'Extract necessary information from this bill OCR output data containing all the food items and tax information into a JSON array with objects having properties - slno, item name, quantity, amount and total amount. Bill data: '
-#     completion = palm.generate_text(
-#         model=model,
-#         prompt=prompt+(' '.join(result)),
-#         temperature=0,
-#         max_output_tokens=800,
-#     )
-#     print(json.loads(completion.result)[0])
-#     return jsonify({'message': 'File uploaded successfully', 'filename': unique_filename, 'ocroutput': json.loads(completion.result)[0]})
+    create_upload_folder()
+    unique_filename = generate_unique_filename(file.filename)
+    file.save(os.path.join(folder_path, unique_filename))
+    with open(os.path.join(folder_path, unique_filename), 'rb') as f:
+        file_content = f.read()
+
+    img = PIL.Image.open(os.path.join(folder_path, unique_filename))
+    model = LLM.GenerativeModel(ocr_model)
+    response = model.generate_content(["Extract necessary information from this bill OCR output data containing all the food items and tax information into a JSON array with objects having properties - slno, item name, quantity, amount and total amount. Bill data:", img], stream=True)
+    response.resolve();
+    return jsonify({'message': 'File uploaded successfully', 'filename': unique_filename, 'ocroutput': json.loads(response.text[9:-4])})
     
 @llm_route.route('/expense', methods=['POST'])
 def convert_expense():
@@ -54,13 +57,9 @@ def convert_expense():
     data = request.get_json() 
     sentence = data.get('requestData', 0)['sentence']
     prompt+=sentence
-    completion = palm.generate_text(
-        model=model,
-        prompt=prompt,
-        temperature=0,
-        max_output_tokens=800,
-    )
-    return jsonify({'message': 'Expense Processed Successfully', 'llmoutput': json.loads(completion.result)})
+    model = LLM.GenerativeModel(text_model)
+    response = model.generate_content(prompt)
+    return jsonify({'message': 'Expense Processed Successfully', 'llmoutput': json.loads(response.text[4:-4])})
 
 @llm_route.route('/home', methods=['GET'])
 def home():
