@@ -7,7 +7,6 @@ from routes.llmController import llm_route
 from flask_cors import CORS
 
 app = Flask(__name__)
-# CORS(app, origins=['https://slb-frontend.vercel.app/'])
 CORS(app)
 
 # Load environment variables
