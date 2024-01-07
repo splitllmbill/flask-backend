@@ -1,8 +1,15 @@
+from django.http import JsonResponse
+from django.core.serializers import serialize
 from models.common import DatabaseManager,Expense,Event, Share
 from datetime import datetime as dt
 from bson import ObjectId
-
+from mongoengine.queryset.visitor import Q
+import os
+import django
 from resources.common import ExpenseResponse
+
+# os.environ.setdefault("DJANGO_SETTINGS_MODULE", "FLASK-BACKEND.settings")
+# django.setup()
 
 dbManager = DatabaseManager()
 dbManager.connect()
@@ -27,10 +34,12 @@ def createExpense(userId, requestData):
     new_expense = Expense(**requestData)
     new_expense.shares = new_shares
     new_expense.type=requestData["type"]
+    new_expense.paidBy = ObjectId(userId)
     new_expense.createdBy = ObjectId(userId)
     new_expense.updatedBy = ObjectId(userId)
     new_expense.createdAt = dt.utcnow()
     new_expense.updatedAt = dt.utcnow()
+    new_expense.category = requestData["category"]
     new_expense.save()
     return new_expense
 
@@ -95,3 +104,20 @@ def getEventExpenses(eventId):
     }
     expenses=dbManager.findAll(Expense,query)
     return expenses
+
+def getAllExpensesForUser(user_id):
+    try:
+        print(user_id)
+        user_object_id = ObjectId(user_id)
+        print(user_object_id)
+        query = {
+            "paidBy": user_object_id,
+            "type": "normal"
+        }
+        print(query)
+        all_expenses = dbManager.findAll(Expense, query)
+        print(all_expenses)
+        return all_expenses
+    except Exception as e:
+        print(f"Error in getAllExpensesForUser function: {e}")
+        raise e
