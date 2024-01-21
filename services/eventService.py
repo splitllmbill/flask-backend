@@ -125,3 +125,30 @@ def deleteEvent(event_id):
     dbManager.delete(event)
     return 'Successfully Deleted Event'
 
+               
+def saveEvent(user_id,request_data):
+    new_event = Event(**request_data)
+    if "id" in request_data.keys():
+        event=getEventByID(request_data['id'])
+        original_set = set(event.users)
+        modified_set = set(new_event.users)
+
+        # Find the elements that are in the original set but not in the modified set
+        removed_elements = original_set - modified_set
+
+        # Convert the result back to a list
+        removed_elements_list = list(removed_elements)
+        for expense in event.expenses:
+            if expense.paidBy in removed_elements_list:
+                raise Exception("user present in expenses")
+            for share in expense.shares:
+                if share.userId in removed_elements_list:
+                    raise Exception("user present in shares")
+
+        new_event.updatedBy=ObjectId(user_id)
+        new_event.updatedAt= dt.utcnow()
+    else:
+        new_event.createdBy=ObjectId(user_id)
+        new_event.createdAt= dt.utcnow()
+    new_event.save()
+    return new_event
