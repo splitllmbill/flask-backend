@@ -12,7 +12,18 @@ def getUserEvents(user_id):
         "users":user_id
     }
     events = dbManager.findAll(Event,query)
-    return events
+    eventWithDues = []
+    for event in events:
+        eventDues=eventService.getEventDues(event["id"])
+        try:
+            eventDict = event.to_mongo()
+            eventDict["dues"] = eventDues
+            eventWithDues.append(eventDict)
+            print("printing res ", eventDict)
+            print(event.__dict__)
+        except ValueError as ve:
+            return {"error": str(ve)}
+    return eventWithDues
 
 def getEventDues(event_id):
     query={
