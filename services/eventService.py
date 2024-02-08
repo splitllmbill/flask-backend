@@ -16,8 +16,8 @@ def getUserEvents(user_id):
     for event in events:
         eventDues=eventService.getEventDues(event["id"])
         try:
-            eventDict = event.to_mongo()
-            eventDict["dues"] = eventDues
+            eventDict = event.to_mongo().to_dict()
+            eventDict["dues"] = eventDues.eventDues
             eventWithDues.append(eventDict)
             print("printing res ", eventDict)
             print(event.__dict__)
