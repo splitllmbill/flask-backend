@@ -237,7 +237,7 @@ def deleteExpense(userId, request, expenseId):
 def getUserEvents(userId, request):
         session_user_id = validate_jwt_token(request)
         events=eventService.getUserEvents(userId)
-        return flaskResponse(ResponseStatus.SUCCESS, events)
+        return flaskResponse(ResponseStatus.SUCCESS, [toJson(event) for event in events])
     
 
 @db_route.route('event/<event_id>/expenses', methods=['GET'])

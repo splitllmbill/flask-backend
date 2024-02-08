@@ -16,11 +16,9 @@ def getUserEvents(user_id):
     for event in events:
         eventDues=eventService.getEventDues(event["id"])
         try:
-            eventDict = event.to_mongo()
-            eventDict["dues"] = eventDues
+            eventDict = event.to_mongo().to_dict()
+            eventDict["dues"] = eventDues.eventDues
             eventWithDues.append(eventDict)
-            print("printing res ", eventDict)
-            print(event.__dict__)
         except ValueError as ve:
             return {"error": str(ve)}
     return eventWithDues
@@ -39,19 +37,13 @@ def getEventDues(event_id):
     print("expenses",expenses)
     for expense in expenses:
         payer_id = expense.paidBy.id
-        print(expense['id'],payer_id)
         shares = shareService.getExpenseShares(expense.id)
-        print(shares)
         user_payees = {share.userId.id: [] for share in shares}
         amounts_owed = {share.userId.id: {} for share in shares}
-        print(user_payees)
 
         for share in shares:
             share_amount = share.amount
             participant_id = share.userId.id
-            print(participant_id,payer_id)
-            print('ub',user_balances)
-            print('up',user_payees)
             if participant_id != payer_id:
                 if participant_id in user_balances:
                     user_balances[participant_id] += share_amount
@@ -63,7 +55,6 @@ def getEventDues(event_id):
 
     result = {}
     user_name_map = {}
-    print('step2')
     for user, debts in amounts_owed.items():
         for payee, amount in debts.items():
             if user not in user_name_map:
@@ -75,7 +66,6 @@ def getEventDues(event_id):
             result[str(user)] = temp
 
     event_dues = []
-    print('step3')
     for debtor in result:
         debtor_name = user_name_map[str(debtor)]
         creditor_details = []
@@ -88,7 +78,6 @@ def getEventDues(event_id):
         event_dues.append(EventDue(debtor, debtor_name, creditor_details).__dict__)
 
     final_result = EventDueSummary(event_dues)
-    print("final" ,final_result,"final")
     return final_result
 
 def getEventDuesForUser(event_id, user_id):
