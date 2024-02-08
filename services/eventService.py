@@ -12,16 +12,7 @@ def getUserEvents(user_id):
         "users":user_id
     }
     events = dbManager.findAll(Event,query)
-    eventWithDues = []
-    for event in events:
-        eventDues=eventService.getEventDues(event["id"])
-        try:
-            eventDict = event.to_mongo().to_dict()
-            eventDict["dues"] = eventDues.eventDues
-            eventWithDues.append(eventDict)
-        except ValueError as ve:
-            return {"error": str(ve)}
-    return eventWithDues
+    return events
 
 def getEventDues(event_id):
     query={
@@ -37,7 +28,7 @@ def getEventDues(event_id):
     print("expenses",expenses)
     for expense in expenses:
         payer_id = expense.paidBy.id
-        shares = shareService.getExpenseShares(expense.id)
+        shares = expense.shares
         user_payees = {share.userId.id: [] for share in shares}
         amounts_owed = {share.userId.id: {} for share in shares}
 
