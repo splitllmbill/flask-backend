@@ -37,7 +37,7 @@ def getEventDues(event_id):
     print("expenses",expenses)
     for expense in expenses:
         payer_id = expense.paidBy.id
-        shares = shareService.getExpenseShares(expense.id)
+        shares = expense.shares
         user_payees = {share.userId.id: [] for share in shares}
         amounts_owed = {share.userId.id: {} for share in shares}
 
