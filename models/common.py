@@ -60,18 +60,8 @@ def modifyObj(json_data,key,value):
             "ordinal": value.inc
         }
     elif isinstance(value, DBRef):
-        ref_collection = value.collection
         ref_id = value.id
-        if ref_collection == 'user':
-            user = User.objects(id=ref_id).first()
-            if user:
-                json_data[key] = user.name
-        elif ref_collection == 'event':
-            event = Event.objects(id=ref_id).first()
-            if event:
-                json_data[key] = event.eventName
-        else:
-            json_data[key] = f"{ref_id}"
+        json_data[key] = f"{ref_id}"
     elif isinstance(value, list) and all(isinstance(item, DBRef) for item in value):
         ref_list = []
         for ref in value:
