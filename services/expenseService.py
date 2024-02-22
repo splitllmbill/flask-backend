@@ -16,6 +16,12 @@ def getExpenseById(expenseId):
 
 def createExpense(userId, requestData):
     shares = requestData['shares']
+    shareTotal=0
+    for share in shares:
+        shareTotal =shareTotal+share["amount"]
+
+    if shareTotal != requestData["amount"]:
+         raise ValueError("Expense amount not equal to sum of shares")
     del requestData['shares']
     new_shares = []
     for i in shares:
