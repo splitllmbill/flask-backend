@@ -326,7 +326,7 @@ def getEventDues(event_id):
             r = flaskResponse(ResponseStatus.BAD_REQUEST)
 
         except Exception as e:
-            print('is this here',e)
+            print(e)
             r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
     else:
         r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
