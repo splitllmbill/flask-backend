@@ -46,6 +46,30 @@ def getUserById(user_id):
         r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
     return r
 
+@db_route.route('/users', methods=['GET'])
+def getAllUsers():
+    if request.method == 'GET':
+        try:
+            validate_jwt_token(request)
+            query={}
+            users = dbManager.findAll(User,query)
+            r=flaskResponse(ResponseStatus.SUCCESS,[toJson({"id":user.id,"email":user.email,"name":user.name}) for user in users])
+
+        except jwt.PyJWTError as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
+        
+        except (BadRequest,ValueError) as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.BAD_REQUEST)
+
+        except Exception as e:
+            print(e)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+    else:
+        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
+    return r
+
 @db_route.route('/user-by-email/<email_id>', methods=['GET'])
 def getUserByEmailId(email_id):
     if request.method == 'GET':
