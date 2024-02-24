@@ -1,32 +1,81 @@
 # flask-backend
 Python Flask Repositories for LLM/OCR and other APIs
 
-To install required python libraries 
-pip install -r requirements.txt
+## Installation
 
-To start the flask server
+To install required Python libraries, use the following command:
+```bash
+pip install -r requirements.txt
+```
+
+## Running the Server
+
+To start the Flask server, execute the following command:
+```bash
 python app.py
+```
 
-Get .env file and add to home folder
+## Configuration
 
-If you are having issues with python packages due to existing ones installed. Create a virtual environment:
+Get the `.env` file and add it to the home folder.
 
+## Virtual Environment Setup (Optional)
+
+If you encounter issues with existing Python packages, you can create a virtual environment.
+
+### Install `virtualenv`
+
+First, install `virtualenv` using pip:
+```bash
 pip install virtualenv
+```
+
+Verify the `virtualenv` version:
+```bash
 virtualenv --version
+```
 
-Then inside the repo folder:
+### Create and Activate Virtual Environment
+
+Inside the repository folder:
+
+Create a virtual environment named `venv`:
+```bash
 virtualenv venv
+```
+
+Activate the virtual environment:
+- For Windows:
+```bash
 venv\Scripts\activate
+```
+- For Unix or MacOS:
+```bash
+source venv/bin/activate
+```
 
-Then your cmd or terminal should start with (venv)
+Your command prompt or terminal should now display `(venv)` to indicate the virtual environment is active.
 
-Check if no packages are installed:
+### Install Required Packages
+
+Check if no packages are installed (optional):
+```bash
 pip list
+```
 
+Install the exact versions of required packages considering dependencies:
+```bash
 pip install -r requirements.txt
+```
 
-Now all the exact versions considering dependencies should be installed.
+Use the below command if you have added any new packages
+```bash
+pip freeze > requirements.txt
+```
 
-To exit this virtual environment:
+### Deactivate Virtual Environment
+
+To exit the virtual environment, use the following command:
+```bash
 deactivate
-
+```

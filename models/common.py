@@ -48,54 +48,53 @@ class DatabaseManager:
     def delete(self, document):
         if document:
             document.delete()
-            
+
+def modifyObj(json_data,key,value):
+    if isinstance(value, ObjectId):
+        if key=="_id":
+            key="id"
+        json_data[key] = str(value)
+    elif isinstance(value, Timestamp):
+        json_data[key] = {
+            "seconds": value.time,
+            "ordinal": value.inc
+        }
+    elif isinstance(value, DBRef):
+        ref_id = value.id
+        json_data[key] = f"{ref_id}"
+    elif isinstance(value, list) and all(isinstance(item, DBRef) for item in value):
+        ref_list = []
+        for ref in value:
+            ref_collection = ref.collection
+            ref_id = ref.id
+            if ref_collection == 'share':
+                share = Share.objects(id=ref_id).first()
+                if share:
+                    ref_list.append(toJson(share))
+            else:
+                ref_list.append(f"{ref_id}")
+        json_data[key] = ref_list
+    elif isinstance(value, list) and all(isinstance(item, ObjectId) for item in value):
+        json_data[key] = [str(item) for item in value]
+    elif isinstance(value, list):
+        result=[]
+        for item in value:
+            result.append(toJson(item))
+        json_data[key]=result
+    elif isinstance(value, datetime):
+        json_data[key] = value.isoformat()
+    else:
+        if value is not None:
+            json_data[key] = value
+    return json_data
 def toJson(obj):
     json_data = {}
-    for key, value in obj._data.items():
-        if isinstance(value, ObjectId):
-            json_data[key] = str(value)
-        elif isinstance(value, Timestamp):
-            json_data[key] = {
-                "seconds": value.time,
-                "ordinal": value.inc
-            }
-        elif isinstance(value, DBRef):
-            ref_collection = value.collection
-            ref_id = value.id
-            if ref_collection == 'user':
-                user = User.objects(id=ref_id).first()
-                if user:
-                    json_data[key] = user.name
-            elif ref_collection == 'event':
-                event = Event.objects(id=ref_id).first()
-                if event:
-                    json_data[key] = event.eventName
-            else:
-                json_data[key] = f"{ref_collection} ({ref_id})"
-        elif isinstance(value, list) and all(isinstance(item, DBRef) for item in value):
-            ref_list = []
-            for ref in value:
-                ref_collection = ref.collection
-                ref_id = ref.id
-                if ref_collection == 'share':
-                    share = Share.objects(id=ref_id).first()
-                    if share:
-                        ref_list.append(toJson(share))
-                else:
-                    ref_list.append(f"{ref_collection} ({ref_id})")
-            json_data[key] = ref_list
-        elif isinstance(value, list) and all(isinstance(item, ObjectId) for item in value):
-            json_data[key] = [str(item) for item in value]
-        elif isinstance(value, list):
-            result=[]
-            for item in value:
-                result.append(toJson(item))
-            json_data[key]=result
-        elif isinstance(value, datetime):
-            json_data[key] = value.isoformat()
-        else:
-            if value is not None:
-                json_data[key] = value
+    if isinstance(obj,dict):
+        for key,value in obj.items():
+            json_data=modifyObj(json_data,key,value)
+    else:
+        for key, value in obj._data.items():
+            json_data=modifyObj(json_data,key,value)
     return json_data
     
 class User(Document):

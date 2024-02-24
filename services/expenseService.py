@@ -1,15 +1,6 @@
-from django.http import JsonResponse
-from django.core.serializers import serialize
 from models.common import DatabaseManager,Expense,Event, Share
 from datetime import datetime as dt
 from bson import ObjectId
-from mongoengine.queryset.visitor import Q
-import os
-import django
-from resources.common import ExpenseResponse
-
-# os.environ.setdefault("DJANGO_SETTINGS_MODULE", "FLASK-BACKEND.settings")
-# django.setup()
 
 dbManager = DatabaseManager()
 dbManager.connect()
@@ -25,6 +16,12 @@ def getExpenseById(expenseId):
 
 def createExpense(userId, requestData):
     shares = requestData['shares']
+    shareTotal=0
+    for share in shares:
+        shareTotal =shareTotal+share["amount"]
+
+    if shareTotal != requestData["amount"]:
+         raise ValueError("Expense amount not equal to sum of shares")
     del requestData['shares']
     new_shares = []
     for i in shares:
@@ -34,7 +31,7 @@ def createExpense(userId, requestData):
     new_expense = Expense(**requestData)
     new_expense.shares = new_shares
     new_expense.type=requestData["type"]
-    new_expense.paidBy = ObjectId(userId)
+    new_expense.paidBy =ObjectId(requestData["paidBy"])
     new_expense.createdBy = ObjectId(userId)
     new_expense.updatedBy = ObjectId(userId)
     new_expense.createdAt = dt.utcnow()
