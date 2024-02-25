@@ -14,10 +14,10 @@ def getUserEvents(user_id):
     events = dbManager.findAll(Event,query)
     eventWithDues = []
     for event in events:
-        eventDues=eventService.getEventDues(event["id"])
+        eventDues=eventService.getEventDuesForUser(event["id"], user_id)
         try:
             eventDict = event.to_mongo().to_dict()
-            eventDict["dues"] = eventDues.eventDues
+            eventDict["dues"] = eventDues
             eventWithDues.append(eventDict)
         except ValueError as ve:
             return {"error": str(ve)}
