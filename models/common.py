@@ -1,3 +1,4 @@
+from decimal import Decimal
 import os
 from mongoengine import Document,DecimalField, StringField, IntField, DateTimeField, ReferenceField, ListField,connect
 from mongoengine import connect, disconnect
@@ -50,7 +51,9 @@ class DatabaseManager:
             document.delete()
 
 def modifyObj(json_data,key,value):
-    if isinstance(value, ObjectId):
+    if isinstance(value, Decimal):
+        json_data[key] = float(value)
+    elif isinstance(value, ObjectId):
         if key=="_id":
             key="id"
         json_data[key] = str(value)
