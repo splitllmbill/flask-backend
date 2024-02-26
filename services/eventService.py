@@ -42,7 +42,7 @@ def getEventDues(event_id):
         amounts_owed = {share.userId.id: {} for share in shares}
 
         for share in shares:
-            share_amount = share.amount
+            share_amount = float(share.amount)
             participant_id = share.userId.id
             if participant_id != payer_id:
                 if participant_id in user_balances:
