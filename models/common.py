@@ -1,5 +1,6 @@
+from decimal import Decimal
 import os
-from mongoengine import Document, StringField, IntField, DateTimeField, ReferenceField, ListField,connect
+from mongoengine import Document,DecimalField, StringField, IntField, DateTimeField, ReferenceField, ListField,connect
 from mongoengine import connect, disconnect
 from dotenv import load_dotenv
 from bson import ObjectId, Timestamp, DBRef
@@ -50,7 +51,9 @@ class DatabaseManager:
             document.delete()
 
 def modifyObj(json_data,key,value):
-    if isinstance(value, ObjectId):
+    if isinstance(value, Decimal):
+        json_data[key] = float(value)
+    elif isinstance(value, ObjectId):
         if key=="_id":
             key="id"
         json_data[key] = str(value)
@@ -126,7 +129,7 @@ class Event(Document):
 
 class Expense(Document):
     expenseName = StringField(required=True)
-    amount = IntField(required=True)
+    amount = DecimalField(required=True)
     type = StringField(required=True)
     paidBy = ReferenceField('User',required=True)
     shares = ListField(ReferenceField('Share'))
@@ -138,6 +141,6 @@ class Expense(Document):
     eventId = ReferenceField('Event',required=False)
 
 class Share(Document):
-    amount = IntField()
+    amount = DecimalField(required=True)
     userId = ReferenceField('User')
     eventId = ReferenceField('Event')
