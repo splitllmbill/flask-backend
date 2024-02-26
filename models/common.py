@@ -1,5 +1,5 @@
 import os
-from mongoengine import Document, StringField, IntField, DateTimeField, ReferenceField, ListField,connect
+from mongoengine import Document,DecimalField, StringField, IntField, DateTimeField, ReferenceField, ListField,connect
 from mongoengine import connect, disconnect
 from dotenv import load_dotenv
 from bson import ObjectId, Timestamp, DBRef
@@ -126,7 +126,7 @@ class Event(Document):
 
 class Expense(Document):
     expenseName = StringField(required=True)
-    amount = IntField(required=True)
+    amount = DecimalField(required=True)
     type = StringField(required=True)
     paidBy = ReferenceField('User',required=True)
     shares = ListField(ReferenceField('Share'))
@@ -138,6 +138,6 @@ class Expense(Document):
     eventId = ReferenceField('Event',required=False)
 
 class Share(Document):
-    amount = IntField()
+    amount = DecimalField(required=True)
     userId = ReferenceField('User')
     eventId = ReferenceField('Event')
