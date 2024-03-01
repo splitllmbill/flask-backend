@@ -22,12 +22,13 @@ dbManager.connect()
 
 ph = PasswordHasher()
 
-@db_route.route('/user/<user_id>', methods=['GET'])
-def getUserById(user_id):
+@db_route.route('/user', methods=['GET'])
+@requestHandler
+def getUserById(userId, request):
     if request.method == 'GET':
         try:
             validate_jwt_token(request)
-            query={"id":ObjectId(user_id)}
+            query={"id":ObjectId(userId)}
             user = dbManager.findOne(User,query)
             r=flaskResponse(ResponseStatus.SUCCESS,user)
 
