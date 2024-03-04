@@ -10,7 +10,7 @@ from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
 
-from services import expenseService,eventService,shareService
+from services import expenseService,eventService,shareService, friendService
 from models.common import Account, DatabaseManager,User, toJson
 from util.auth import validate_jwt_token
 from util.response import ResponseStatus, flaskResponse
@@ -404,3 +404,15 @@ def deleteEvent(event_id):
     result=eventService.deleteEvent(event_id)
     r=flaskResponse(ResponseStatus.SUCCESS,result)
     return r
+
+@db_route.route('/user/friends', methods=['GET'])
+@requestHandler
+def get_user_friends(user_id, request):
+    result = friendService.get_friend_list(user_id);
+    return flaskResponse(ResponseStatus.SUCCESS,result);
+
+@db_route.route('/user/expense/friend/<friend_id>', methods=['GET'])
+@requestHandler
+def getFriendExpenses(user_id, request, friend_id):
+    result = friendService.getFriendDetails(user_id,friend_id);
+    return flaskResponse(ResponseStatus.SUCCESS,result);
