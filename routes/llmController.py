@@ -41,7 +41,7 @@ def upload_file():
     img = PIL.Image.open(os.path.join(folder_path, unique_filename))
     model = LLM.GenerativeModel(ocr_model)
     response = model.generate_content(["Extract necessary information from this bill OCR output data containing all the food items and tax information into a JSON array with objects having properties - slno, item name, quantity, amount and total amount. Bill data:", img], stream=True)
-    response.resolve();
+    response.resolve()
     return jsonify({'message': 'File uploaded successfully', 'filename': unique_filename, 'ocroutput': json.loads(response.text[9:-4])})
     
 @llm_route.route('/expense', methods=['POST'])
@@ -52,7 +52,17 @@ def convert_expense():
     prompt+=sentence
     model = LLM.GenerativeModel(text_model)
     response = model.generate_content(prompt)
-    return jsonify({'message': 'Expense Processed Successfully', 'llmoutput': json.loads(response.text[4:-4])})
+    response.resolve()
+    jsonResponse = response.text[8:-4]
+    try:
+        jsonResponse = json.loads(jsonResponse)
+    except json.JSONDecodeError as E:
+        print(E)
+        jsonResponse = None
+    if jsonResponse is None:
+        return jsonify({'message': 'Exception while calling Gemini API', 'llmoutput': {}})
+    return jsonify({'message': 'Expense Processed Successfully', 'llmoutput': jsonResponse})
+        
 
 @llm_route.route('/home', methods=['GET'])
 def home():
