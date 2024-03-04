@@ -58,6 +58,7 @@ def convert_expense():
         jsonResponse = json.loads(jsonResponse)
     except json.JSONDecodeError as E:
         print(E)
+        print(response.text)
         jsonResponse = None
     if jsonResponse is None:
         return jsonify({'message': 'Exception while calling Gemini API', 'llmoutput': {}})
