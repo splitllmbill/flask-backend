@@ -226,6 +226,12 @@ def getExpenseById(userId, request, expenseId):
     expense = expenseService.getExpenseById(expenseId)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
 
+@db_route.route('/expense/nongroup', methods = ['GET'])
+@requestHandler
+def getNonGroupExpenses(userId, request):
+    expense = friendService.getNonGroupExpenses(userId)
+    return flaskResponse(ResponseStatus.SUCCESS, expense)
+
 @db_route.route('/expenses/personal', methods=['GET'])
 @requestHandler
 def getAllExpensesForUser(userId, request):
@@ -262,7 +268,7 @@ def deleteExpense(userId, request, expenseId):
 def getUserEvents(userId, request):
         session_user_id = validate_jwt_token(request)
         events=eventService.getUserEvents(userId)
-        return flaskResponse(ResponseStatus.SUCCESS, [toJson(event) for event in events])
+        return flaskResponse(ResponseStatus.SUCCESS, events)
     
 
 @db_route.route('event/<event_id>/expenses', methods=['GET'])
@@ -271,7 +277,7 @@ def getEventExpenses(event_id):
         try:   
             session_user_id = validate_jwt_token(request)
             expenses=expenseService.getEventExpenses(event_id)
-            return flaskResponse(ResponseStatus.SUCCESS,[toJson(expense) for expense in expenses])
+            return flaskResponse(ResponseStatus.SUCCESS,expenses)
         except jwt.PyJWTError as e:
             print(e)
             r = flaskResponse(ResponseStatus.INVALID_TOKEN)
