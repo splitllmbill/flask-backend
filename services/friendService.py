@@ -100,32 +100,44 @@ def getNonGroupExpenses(user_id):
         return {"error": "User not found"}
     
     expenses = Expense.objects(type='friend')
-    friend_owe = {}
+    friends_owe = {}
     overall_you_owe = 0
     overall_you_are_owed = 0
+    
     for expense in expenses:
-            for share in expense.shares:
-                friend_id = str(share.userId.id)
-                if friend_id != user_id:
-                    owe_amount = float(abs(share.amount))  # Convert to float
-                    if share.amount < 0:
-                        overall_you_are_owed += abs(owe_amount)
-                    else:
-                        overall_you_owe += abs(owe_amount)
-                    if friend_id not in friend_owe:
-                        friend_owe[friend_id] = {
-                            'name': share.userId.name,
-                            'id':str(share.userId.id),
-                            'oweAmount': owe_amount,  # Use the float value
-                            'whoOwes': "Friend" if share.amount < 0 else "You"
-                        }
-                    else:
-                        friend_owe[friend_id]['oweAmount'] += owe_amount  # Use the float value
+        user_owe = 0
+        friend_owe = 0
 
-    # Convert friend_owe dictionary to list of friend data
-    friends_data = list(friend_owe.values())
+        for share in expense.shares:
+            friend_id = str(share.userId.id)
+            friend = User.objects(id=friend_id).first()
 
-    # Construct the response JSON object
+            if share.userId == user and expense.paidBy == friend:
+                user_owe += share.amount
+            elif share.userId == friend and expense.paidBy == user:
+                friend_owe += share.amount
+
+        print(friend_owe,user_owe)
+        owe_amount = abs(friend_owe - user_owe)
+        who_owes = "friend" if friend_owe > user_owe else "user"
+        
+        if who_owes == "user":
+            overall_you_owe += owe_amount
+        else:
+            overall_you_are_owed += owe_amount
+
+        if friend_id not in friends_owe:
+            friends_owe[friend_id] = {
+                'name': friend.name,
+                'id': str(friend_id),
+                'oweAmount': float(owe_amount),
+                'whoOwes': who_owes
+            }
+        else:
+            friends_owe[friend_id]['oweAmount'] += owe_amount
+
+    friends_data = list(friends_owe.values())
+
     response = {
         "overallYouOwe": float(overall_you_owe),
         "overallYouAreOwed": float(overall_you_are_owed),
