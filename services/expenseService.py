@@ -130,3 +130,4 @@ def getAllExpensesForUser(user_id):
     except Exception as e:
         print(f"Error in getAllExpensesForUser function: {e}")
         raise e
+    

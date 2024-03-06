@@ -1,5 +1,5 @@
 import numpy
-from models.common import DatabaseManager,Event
+from models.common import DatabaseManager,Event, toJson
 from datetime import datetime as dt
 from resources.common import CreditorDetail,EventDue,EventDueSummary
 from bson import ObjectId
@@ -8,20 +8,31 @@ dbManager = DatabaseManager()
 dbManager.connect()
 
 def getUserEvents(user_id):
-    query={
-        "users":user_id
-    }
-    events = dbManager.findAll(Event,query)
-    eventWithDues = []
+    events = dbManager.findAll(Event, {"users": user_id})
+    overall_you_owe = 0
+    overall_owed = 0
+    events_with_dues = []
+
     for event in events:
-        eventDues=eventService.getEventDuesForUser(event["id"], user_id)
-        try:
-            eventDict = event.to_mongo().to_dict()
-            eventDict["dues"] = eventDues
-            eventWithDues.append(eventDict)
-        except ValueError as ve:
-            return {"error": str(ve)}
-    return eventWithDues
+        event_id = event["id"]
+        event_dues = eventService.getEventDuesForUser(event_id, user_id)
+        
+        event_dict = event.to_mongo().to_dict()
+        event_dict["dues"] = event_dues
+        events_with_dues.append(event_dict)
+
+        overall_you_owe += event_dues["totalDebt"]
+        overall_owed += event_dues["totalOwed"]
+        overallOweAmount = abs(overall_you_owe-overall_owed)
+        owingPerson = "user" if overall_you_owe >= overall_owed else "friend"
+
+    response = {
+                "overallOweAmount": float(overallOweAmount),
+                "owingPerson": owingPerson,
+                "events": [toJson(event) for event in events_with_dues]
+                }
+        
+    return response
 
 def getEventDues(event_id):
     query={
@@ -34,7 +45,6 @@ def getEventDues(event_id):
     user_balances = {user.id: 0 for user in event.users}
     expenses = expenseService.getEventExpenses(event.id)
     amounts_owed = {}
-    print("expenses",expenses)
     for expense in expenses:
         payer_id = expense.paidBy.id
         shares = expense.shares
@@ -82,7 +92,6 @@ def getEventDues(event_id):
 
 def getEventDuesForUser(event_id, user_id):
     result = {"inDebtTo": [], "isOwed": [], "totalDebt": 0, "totalOwed": 0}
-
     try:
         event_dues_summary = getEventDues(event_id)
         user_name = userService.getUserNameById(user_id)

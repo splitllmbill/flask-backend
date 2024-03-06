@@ -133,6 +133,7 @@ class Expense(Document):
     type = StringField(required=True)
     paidBy = ReferenceField('User',required=True)
     shares = ListField(ReferenceField('Share'))
+    date = DateTimeField(required=False)
     createdAt = DateTimeField(required=True)
     updatedAt = DateTimeField(required=True)
     createdBy = ReferenceField('User',required=True)
@@ -144,3 +145,7 @@ class Share(Document):
     amount = DecimalField(required=True)
     userId = ReferenceField('User')
     eventId = ReferenceField('Event')
+
+class Friends(Document):
+    userId = ReferenceField('User')
+    friends = ListField(ReferenceField('User'))
