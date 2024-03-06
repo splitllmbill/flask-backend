@@ -11,6 +11,8 @@ def getUserEvents(user_id):
     events = dbManager.findAll(Event, {"users": user_id})
     overall_you_owe = 0
     overall_owed = 0
+    overallOweAmount = 0
+    owingPerson = ""
     events_with_dues = []
 
     for event in events:
