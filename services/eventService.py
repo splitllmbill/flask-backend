@@ -98,22 +98,28 @@ def getEventDuesForUser(event_id, user_id):
         event_dues_summary = getEventDues(event_id)
         user_name = userService.getUserNameById(user_id)
 
-        for person_in_debt in event_dues_summary.eventDues:
-            if person_in_debt["id"] == user_id:
-                result["inDebtTo"].append(person_in_debt["creditorDetails"])
-                result["totalDebt"] += sum(owed_person["amount"] for owed_person in person_in_debt["creditorDetails"])
-            else:
-                for owed_person in person_in_debt["creditorDetails"]:
-                    if owed_person["id"] == user_id:
-                        result["isOwed"].append(
-                            {"id": person_in_debt["id"], "name": person_in_debt["debtor"], "amount": owed_person["amount"]}
-                        )
-                        result["totalOwed"] += owed_person["amount"]
+        # Assuming event_dues_summary is a single object, not iterable
+        # Adjust this part based on the structure of event_dues_summary
+        if event_dues_summary.eventDues:
+            for person_in_debt in event_dues_summary.eventDues:
+                if person_in_debt["id"] == user_id:
+                    for owed_person in person_in_debt["creditorDetails"]:
+                        result["inDebtTo"].append(owed_person)
+                        result["totalDebt"] += owed_person["amount"]
+                else:
+                    for owed_person in person_in_debt["creditorDetails"]:
+                        if owed_person["id"] == user_id:
+                            result["isOwed"].append(
+                                {"id": person_in_debt["id"], "name": person_in_debt["debtor"], "amount": owed_person["amount"]}
+                            )
+                            result["totalOwed"] += owed_person["amount"]
     except ValueError as ve:
         # Handle the specific exception raised when the event is not found
         return {"error": str(ve)}
 
     return result
+
+
 
 def getEventByID(event_id):
     query={
@@ -163,3 +169,19 @@ def saveEvent(user_id,request_data):
         new_event.createdAt= dt.utcnow()
     new_event.save()
     return new_event
+
+def getEventUsers(event_id):
+    query = {
+        "id": event_id
+    }
+    event = dbManager.findOne(Event,query)
+    if event is None:
+        return False
+    users = []
+    for user in event.users:
+        res = {
+            "name": user.name,
+            "id": str(user.id)
+        }
+        users.append(res)
+    return users

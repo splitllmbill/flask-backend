@@ -1,18 +1,47 @@
-from models.common import DatabaseManager,Expense,Event, Share
+from models.common import DatabaseManager,Expense,Event, Share, User, toJson
 from datetime import datetime as dt
 from bson import ObjectId
+from services import expenseService, eventService, shareService
 
 dbManager = DatabaseManager()
 dbManager.connect()
 
-def getExpenseById(expenseId):
+def getExpenseById(expenseId, userId):
     query = {
         "id": expenseId
     }
-    expense = dbManager.findOne(Expense,query)
+    expense = dbManager.findOne(Expense, query)
     if expense is None:
         return False
-    return expense
+    
+    # Populate shares
+    shares = []
+    for share in expense.shares:
+        name = "you" if str(share.userId.id) == userId else dbManager.findOne(User, {"id": share.userId.id}).name
+        share_info = {
+            "amount": float(share.amount),
+            "name": name,
+            "id": str(share.id)
+        }
+        shares.append(share_info)
+
+    # Constructing the expense object
+    result = {
+        "expenseName": expense.expenseName,
+        "amount": float(expense.amount),
+        "type": expense.type,
+        "paidById": str(expense.paidBy.id),
+        "paidBy": "you" if str(expense.paidBy.id) == userId else dbManager.findOne(User, {"id": expense.paidBy.id}).name,
+        "shares": shares,
+        "createdAt": str(expense.createdAt),
+        "updatedAt": str(expense.updatedAt),
+        "createdBy": "you" if str(expense.createdBy.id) == userId else dbManager.findOne(User, {"id": expense.createdBy.id}).name,
+        "updatedBy": "you" if str(expense.updatedBy.id) == userId else dbManager.findOne(User, {"id": expense.updatedBy.id}).name,
+        "category": expense.category,
+        "date": str(expense.date),
+        "id": str(expense.id)
+    }
+    return result
 
 def createExpense(userId, requestData):
     shares = requestData['shares']
@@ -114,6 +143,35 @@ def getEventExpenses(eventId):
     expenses=dbManager.findAll(Expense,query)
     return expenses
 
+def getEventExpensesAlongWithUserSummary(userId, eventId):
+    expenses = expenseService.getEventExpenses(eventId)
+    query = {
+        "id": eventId
+    }
+    event = dbManager.findOne(Event,query)
+    expenses_with_summary = []
+    # Iterate through expenses
+    for expense in expenses:
+        summary = shareService.getExpenseShares(userId,expense.id)
+        # Create a dictionary containing expense details and user summary
+        expense_with_summary = {
+            "expenseName": expense.expenseName,
+            "expenseId": str(expense.id),
+            "expenseDate": str(expense.date),
+            "amount": float(expense.amount),
+            "category": expense.category,
+            "user_summary": summary
+        }
+        # Append the dictionary to the list
+        expenses_with_summary.append(expense_with_summary)
+    # Return the list of expenses with user summary
+    result = {
+        "eventName": event.eventName,
+        "expenses": expenses_with_summary
+    }
+    return result
+        
+
 def getAllExpensesForUser(user_id):
     try:
         print(user_id)
@@ -130,4 +188,4 @@ def getAllExpensesForUser(user_id):
     except Exception as e:
         print(f"Error in getAllExpensesForUser function: {e}")
         raise e
-    
+

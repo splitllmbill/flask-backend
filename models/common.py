@@ -120,7 +120,6 @@ class Account(Document):
 class Event(Document):
     users = ListField(ReferenceField('User'))
     eventName = StringField(required=True)
-    totalExpense = IntField()
     createdAt = DateTimeField()
     updatedAt = DateTimeField()
     createdBy = ReferenceField('User')
@@ -133,7 +132,7 @@ class Expense(Document):
     type = StringField(required=True)
     paidBy = ReferenceField('User',required=True)
     shares = ListField(ReferenceField('Share'))
-    date = DateTimeField(required=False)
+    date = DateTimeField(required=True)
     createdAt = DateTimeField(required=True)
     updatedAt = DateTimeField(required=True)
     createdBy = ReferenceField('User',required=True)

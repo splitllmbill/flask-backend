@@ -223,7 +223,7 @@ def updateAccount(userId):
 @db_route.route('/expense/<expenseId>', methods = ['GET'])
 @requestHandler
 def getExpenseById(userId, request, expenseId):
-    expense = expenseService.getExpenseById(expenseId)
+    expense = expenseService.getExpenseById(expenseId, userId)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
 
 @db_route.route('/expense/nongroup', methods = ['GET'])
@@ -272,49 +272,17 @@ def getUserEvents(userId, request):
     
 
 @db_route.route('event/<event_id>/expenses', methods=['GET'])
-def getEventExpenses(event_id):
-    if request.method == 'GET':
-        try:   
-            session_user_id = validate_jwt_token(request)
-            expenses=expenseService.getEventExpenses(event_id)
-            return flaskResponse(ResponseStatus.SUCCESS,expenses)
-        except jwt.PyJWTError as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
-        
-        except (BadRequest,ValueError) as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.BAD_REQUEST)
-
-        except Exception as e:
-            print(e,e.with_traceback)
-            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
-    else:
-        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
-    return r
+@requestHandler
+def getEventExpenses(userId, request, event_id):
+    expenses=expenseService.getEventExpensesAlongWithUserSummary(userId, event_id)
+    return flaskResponse(ResponseStatus.SUCCESS,expenses)
 
 @db_route.route('expense/<expense_id>/shares', methods=['GET'])
-def getExpenseShares(expense_id):
-    if request.method == 'GET':
-        try:   
-            session_user_id = validate_jwt_token(request)
-            shares=shareService.getExpenseShares(expense_id)
-            return flaskResponse(ResponseStatus.SUCCESS,[toJson(share) for share in shares])
-        except jwt.PyJWTError as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INVALID_TOKEN)
-        
-        except (BadRequest,ValueError) as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.BAD_REQUEST)
-
-        except Exception as e:
-            print(e)
-            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
-    else:
-        r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
-    return r
-
+@requestHandler
+def getExpenseShares(userId, request, expense_id):
+    shares=shareService.getExpenseShares(userId, expense_id)
+    return flaskResponse(ResponseStatus.SUCCESS,shares)
+    
 
 @db_route.route('event/<event_id>/dues', methods=['GET'])
 def getEventDues(event_id):
@@ -421,4 +389,11 @@ def get_user_friends(user_id, request):
 @requestHandler
 def getFriendExpenses(user_id, request, friend_id):
     result = friendService.getFriendDetails(user_id,friend_id);
+    return flaskResponse(ResponseStatus.SUCCESS,result);
+
+
+@db_route.route('/event/<event_id>/users', methods=['GET'])
+@requestHandler
+def getEventUsers(user_id, request, event_id):
+    result = eventService.getEventUsers(event_id);
     return flaskResponse(ResponseStatus.SUCCESS,result);

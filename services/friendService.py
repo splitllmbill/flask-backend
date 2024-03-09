@@ -30,8 +30,10 @@ def getFriendDetails(user_id, friend_id):
                 'expenseName': expense.expenseName,
                 'expenseId': str(expense.id),
                 'category': expense.category,
-                'oweAmount': float(owe_amount),
-                'whoOwes': who_owes,
+                'user_summary': {
+                    'oweAmount': float(owe_amount),
+                    'whoOwes': who_owes,
+                },
                 'expenseType': expense.type
             }
             expenses_list.append(expense_details)
