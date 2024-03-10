@@ -392,8 +392,8 @@ def getFriendExpenses(user_id, request, friend_id):
     return flaskResponse(ResponseStatus.SUCCESS,result);
 
 
-@db_route.route('/event/<event_id>/users', methods=['GET'])
+@db_route.route('/<type>/<id>/users', methods=['GET'])
 @requestHandler
-def getEventUsers(user_id, request, event_id):
-    result = eventService.getEventUsers(event_id);
+def getEventUsers(user_id, request, type, id):
+    result = eventService.getEventOrFriendUsers(user_id,type,id);
     return flaskResponse(ResponseStatus.SUCCESS,result);
