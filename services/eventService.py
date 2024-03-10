@@ -1,5 +1,5 @@
 import numpy
-from models.common import DatabaseManager,Event, toJson
+from models.common import DatabaseManager,Event, User, toJson
 from datetime import datetime as dt
 from resources.common import CreditorDetail,EventDue,EventDueSummary
 from bson import ObjectId
@@ -97,6 +97,7 @@ def getEventDuesForUser(event_id, user_id):
     try:
         event_dues_summary = getEventDues(event_id)
         user_name = userService.getUserNameById(user_id)
+        print(event_dues_summary)
 
         # Assuming event_dues_summary is a single object, not iterable
         # Adjust this part based on the structure of event_dues_summary
@@ -170,18 +171,30 @@ def saveEvent(user_id,request_data):
     new_event.save()
     return new_event
 
-def getEventUsers(event_id):
-    query = {
-        "id": event_id
-    }
-    event = dbManager.findOne(Event,query)
-    if event is None:
-        return False
+def getEventOrFriendUsers(userId,type,id):
     users = []
-    for user in event.users:
-        res = {
+    if(type=='friend'):
+        user = dbManager.findOne(User,{"id":userId})
+        users.append({
             "name": user.name,
-            "id": str(user.id)
+            "id": userId
+        })
+        friend = dbManager.findOne(User,{"id":id})
+        users.append({
+            "name": friend.name,
+            "id": id
+        })
+    elif type=='event':
+        query = {
+            "id": id
         }
-        users.append(res)
+        event = dbManager.findOne(Event,query)
+        if event is None:
+            return False
+        for user in event.users:
+            res = {
+                "name": user.name,
+                "id": str(user.id)
+            }
+            users.append(res)
     return users
