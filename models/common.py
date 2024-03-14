@@ -1,6 +1,6 @@
 from decimal import Decimal
 import os
-from mongoengine import Document,DecimalField, StringField, IntField, DateTimeField, ReferenceField, ListField,connect
+from mongoengine import Document,DecimalField, StringField, IntField, DateTimeField, ReferenceField, ListField, connect, BooleanField
 from mongoengine import connect, disconnect
 from dotenv import load_dotenv
 from bson import ObjectId, Timestamp, DBRef
@@ -114,6 +114,23 @@ class Account(Document):
     userId = ReferenceField('User')
     upiId = StringField()
     upiNumber = IntField()
+    createdAt = DateTimeField()
+    updatedAt = DateTimeField()
+
+class Referral(Document):
+    userId = ReferenceField('User')
+    inviteCode = StringField()
+    usersReferred = ListField(ReferenceField('User'))
+    count = IntField()
+    createdAt = DateTimeField()
+    updatedAt = DateTimeField()
+
+class Verification(Document):
+    userId = ReferenceField('User')
+    emailVerified = BooleanField(default=False)
+    emailCode = StringField()
+    mobileVerified = BooleanField(default=False)
+    mobileCode = StringField()
     createdAt = DateTimeField()
     updatedAt = DateTimeField()
     
