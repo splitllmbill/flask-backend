@@ -400,49 +400,20 @@ def deleteEvent(event_id):
 @db_route.route('/user/friends', methods=['GET'])
 @requestHandler
 def get_user_friends(user_id, request):
-    result = friendService.get_friend_list(user_id);
-    return flaskResponse(ResponseStatus.SUCCESS,result);
+    result = friendService.get_friend_list(user_id)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('/user/expense/friend/<friend_id>', methods=['GET'])
 @requestHandler
 def getFriendExpenses(user_id, request, friend_id):
-    result = friendService.getFriendDetails(user_id,friend_id);
-    return flaskResponse(ResponseStatus.SUCCESS,result);
-
-
-@db_route.route('/<type>/<id>/users', methods=['GET'])
-@requestHandler
-def getEventUsers(user_id, request, type, id):
-    result = eventService.getEventOrFriendUsers(user_id,type,id);
-    return flaskResponse(ResponseStatus.SUCCESS,result);
-
-@db_route.route('/user/friends', methods=['GET'])
-@requestHandler
-def get_user_friends(user_id, request):
-    result = friendService.get_friend_list(user_id);
-    return flaskResponse(ResponseStatus.SUCCESS,result);
-
-@db_route.route('/user/expense/friend/<friend_id>', methods=['GET'])
-@requestHandler
-def getFriendExpenses(user_id, request, friend_id):
-    result = friendService.getFriendDetails(user_id,friend_id);
-    return flaskResponse(ResponseStatus.SUCCESS,result);
-
+    result = friendService.getFriendDetails(user_id,friend_id)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('/<type>/<id>/users', methods=['GET'])
 @requestHandler
 def getEventUsers(user_id, request, type, id):
-    result = eventService.getEventOrFriendUsers(user_id,type,id);
-    return flaskResponse(ResponseStatus.SUCCESS,result);
-
-
-@db_route.route('/invite/generate', methods=['PUT'])
-def generateInvite():
-    session_user_id = validate_jwt_token(request)
-    referralService.generateInviteCode(session_user_id)
-    r=flaskResponse(ResponseStatus.SUCCESS,session_user_id)
-    return r
-
+    result = eventService.getEventOrFriendUsers(user_id,type,id)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('/invite/generate', methods=['PUT'])
 def generateInvite():
