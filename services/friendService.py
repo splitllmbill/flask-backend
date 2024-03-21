@@ -65,13 +65,15 @@ def get_friend_list(user_id):
 
     user = dbManager.findOne(User, {"id": user_id})
     if not user:
-        dbManager.disconnect()
         return {"error": "User not found"}
 
     friends_document = dbManager.findOne(Friends, {"userId": user_id})
     if not friends_document:
-        dbManager.disconnect()
-        return {"error": "User has no friends"}
+        return {
+        "overallYouOwe": 0,
+        "overallYouAreOwed": 0,
+        "friendsList": [],
+    }
 
     friend_owe = {}
     overall_you_owe = 0
@@ -84,8 +86,6 @@ def get_friend_list(user_id):
         # Update overall owe amounts
         overall_you_owe += dues["oweAmount"] if dues["whoOwes"] == "user" else 0
         overall_you_are_owed += dues["oweAmount"] if dues["whoOwes"] == "friend" else 0
-
-    dbManager.disconnect()
 
     response = {
         "overallYouOwe": float(abs(overall_you_owe)),
