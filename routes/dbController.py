@@ -10,7 +10,7 @@ from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
 
-from services import expenseService,eventService,shareService, friendService
+from services import expenseService,eventService,shareService, friendService, userService
 from models.common import Account, DatabaseManager,User, toJson
 from util.auth import validate_jwt_token
 from util.response import ResponseStatus, flaskResponse
@@ -211,7 +211,7 @@ def logoutUser():
 
 @db_route.route('/account', methods=['PUT'])
 @requestHandler
-def updateAccount(userId):
+def updateAccount(userId, request):
     requestData = request.get_json()
     query = {
         "id": ObjectId(userId)
@@ -219,6 +219,19 @@ def updateAccount(userId):
     user = dbManager.findOne(User, query)
     dbManager.update(user.account, **requestData)
     return flaskResponse(ResponseStatus.SUCCESS)
+
+@db_route.route('/useraccount', methods=['PUT'])
+@requestHandler
+def updateUserAccount(userId, request):
+    requestData = request.get_json()
+    userService.putUserAccount(userId,requestData)
+    return flaskResponse(ResponseStatus.SUCCESS)
+
+@db_route.route('/useraccount', methods=['GET'])
+@requestHandler
+def getAccount(userId, request):
+    account = userService.getUserAccount(userId)
+    return flaskResponse(ResponseStatus.SUCCESS, account)
 
 @db_route.route('/expense/<expenseId>', methods = ['GET'])
 @requestHandler
