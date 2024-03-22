@@ -115,9 +115,9 @@ def getNonGroupExpenses(user_id):
             friend = User.objects(id=friend_id).first()
 
             if share.userId == user and expense.paidBy == friend:
-                user_owe += share.amount
+                user_owe += float(share.amount)
             elif share.userId == friend and expense.paidBy == user:
-                friend_owe += share.amount
+                friend_owe += float(share.amount)
 
         print(friend_owe,user_owe)
         owe_amount = abs(friend_owe - user_owe)
