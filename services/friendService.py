@@ -53,6 +53,7 @@ def getFriendDetails(user_id, friend_id):
         overall_who_owes = "friend" if total_friend_owe > total_user_owe else "user"
 
         friend_json = {
+            "uuid": friend.uuid,
             "name": friend.name,
             "overallOweAmount": float(total_owe_amount),
             "overallWhoOwes": overall_who_owes,
@@ -205,7 +206,7 @@ def add_friend(user_id, requestData):
     if not friend_user:
         return { "message": 'Friend not found!'}
 
-    if user_id == friend_user.id:
+    if user_id == str(friend_user.id):
         return { "message": 'Cannot add yourself as a friend!'}
     
     user_friends = Friends.objects(userId=user_id).first()
@@ -225,3 +226,24 @@ def add_friend(user_id, requestData):
     friend_friends.save()
 
     return { "message": 'Friend Added Successfully!'}
+
+def delete_friend(user_id, requestData):
+    friend_code = requestData.get('friendCode')
+    
+    friend_user = User.objects(uuid=friend_code).first()
+    if (not friend_user) or (user_id == friend_user.id):
+        return { "message": 'Invalid request'}
+    
+    user_friends = Friends.objects(userId=user_id).first()
+
+    user_friends.friends = [friend for friend in user_friends.friends if str(friend.id) != str(friend_user.id)]
+    user_friends.save()
+
+    friend_friends = Friends.objects(userId=friend_user.id).first()
+    if not friend_friends:
+        return { "message": 'Invalid request'}
+
+    friend_friends.friends = [friend for friend in friend_friends.friends if str(friend.id) != user_id]
+    friend_friends.save()
+
+    return { "message": 'Unfriended successfully!'}
