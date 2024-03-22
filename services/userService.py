@@ -1,3 +1,4 @@
+import uuid
 from bson import ObjectId
 from models.common import Account, DatabaseManager, User
 
@@ -59,4 +60,6 @@ def putUserAccount(userId, newData):
     
     return True
 
-
+def generate_user_code():
+    # Generate a UUID (Version 4) as a unique user code
+    return str(uuid.uuid4())

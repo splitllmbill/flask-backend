@@ -136,6 +136,7 @@ def signup():
             new_user.password = passwordHash
             new_user.createdAt = datetime.datetime.utcnow
             new_user.updatedAt = datetime.datetime.utcnow
+            new_user.uuid = userService.generate_user_code()
             new_user.save()
             new_account = Account()
             new_account.updatedAt = datetime.datetime.utcnow
@@ -410,3 +411,10 @@ def getFriendExpenses(user_id, request, friend_id):
 def getEventUsers(user_id, request, type, id):
     result = eventService.getEventOrFriendUsers(user_id,type,id);
     return flaskResponse(ResponseStatus.SUCCESS,result);
+
+@db_route.route('/addFriend', methods = ['POST'])
+@requestHandler
+def addFriend(userId, request):
+    requestData = request.get_json()
+    result = friendService.add_friend(userId,requestData)
+    return result
