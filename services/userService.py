@@ -30,6 +30,7 @@ def getUserAccount(userId):
         return False
     
     return {
+        "uuid": user.uuid,
         "name": user.name,
         "email": user.email,
         "upiNumber": account.upiNumber if hasattr(account, 'upiNumber') else "",

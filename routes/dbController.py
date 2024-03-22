@@ -418,3 +418,10 @@ def addFriend(userId, request):
     requestData = request.get_json()
     result = friendService.add_friend(userId,requestData)
     return result
+
+@db_route.route('/deleteFriend', methods = ['DELETE'])
+@requestHandler
+def deleteFriend(userId, request):
+    requestData = request.get_json()
+    result = friendService.delete_friend(userId,requestData)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
