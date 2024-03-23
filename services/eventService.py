@@ -160,6 +160,8 @@ def saveEvent(user_id,request_data):
 
         # Convert the result back to a list
         removed_elements_list = list(removed_elements)
+        if event.createdBy in removed_elements_list:
+            raise Exception("cannot remove event creator")    
         for expense in event.expenses:
             if expense.paidBy in removed_elements_list:
                 raise Exception("user present in expenses")
