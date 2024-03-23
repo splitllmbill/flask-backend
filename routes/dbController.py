@@ -281,8 +281,12 @@ def deleteExpense(userId, request, expenseId):
 @requestHandler
 def getUserEvents(userId, request):
         session_user_id = validate_jwt_token(request)
-        events=eventService.getUserEvents(userId)
-        return flaskResponse(ResponseStatus.SUCCESS, events)
+        try:
+            events=eventService.getUserEvents(userId)
+            return flaskResponse(ResponseStatus.SUCCESS, events)
+        except Exception as e:
+            print(f"Error in getAllExpensesForUser route: {e}")
+            return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR, str(e))
     
 
 @db_route.route('event/<event_id>/expenses', methods=['GET'])
