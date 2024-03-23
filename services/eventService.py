@@ -138,10 +138,14 @@ def deleteEvent(event_id):
     event = dbManager.findOne(Event,query)
     if event is None:
         return False
-    for expense in event.expenses:
-        dbManager.delete(expense)
-    dbManager.delete(event)
-    return 'Successfully Deleted Event'
+    dues = eventService.getEventDues(event_id)
+    if dues.eventDues:
+        return {"message":'Cannot delete event. There are unsettled dues.', "success":"false"}
+    else:
+        for expense in event.expenses:
+            dbManager.delete(expense)
+        dbManager.delete(event)
+    return {"message":'Successfully deleted event', "success":"true"}
 
                
 def saveEvent(user_id,request_data):
