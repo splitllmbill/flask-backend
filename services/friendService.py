@@ -2,6 +2,7 @@ import string
 from bson import ObjectId
 from models.common import DatabaseManager, Event, Expense, Friends, User
 from mongoengine import Q
+from services import friendService
 
 dbManager = DatabaseManager()
 dbManager.connect()
@@ -232,8 +233,18 @@ def delete_friend(user_id, requestData):
     
     friend_user = User.objects(uuid=friend_code).first()
     if (not friend_user) or (user_id == friend_user.id):
-        return { "message": 'Invalid request'}
+        return { "success": 'false',  "message": 'Invalid request'}
     
+    # Check if there are any shared groups
+    shared_groups = Event.objects(users__all=[user_id, friend_user.id])
+    if shared_groups:
+        return { "success": 'false', "message": 'Cannot delete friend. You have shared groups.'}
+
+    # Check if there are any unsettled expenses
+    unsettled_expenses = friendService.getFriendDues(user_id, friend_user.id)
+    if unsettled_expenses["oweAmount"] > 0:
+        return { "success": 'false', "message": 'Cannot delete friend. There are unsettled expenses.'}
+
     user_friends = Friends.objects(userId=user_id).first()
 
     user_friends.friends = [friend for friend in user_friends.friends if str(friend.id) != str(friend_user.id)]
@@ -241,9 +252,9 @@ def delete_friend(user_id, requestData):
 
     friend_friends = Friends.objects(userId=friend_user.id).first()
     if not friend_friends:
-        return { "message": 'Invalid request'}
+        return { "success": 'false', "message": 'Invalid request'}
 
     friend_friends.friends = [friend for friend in friend_friends.friends if str(friend.id) != user_id]
     friend_friends.save()
 
-    return { "message": 'Unfriended successfully!'}
+    return { "success": 'true', "message": 'Unfriended successfully!'}

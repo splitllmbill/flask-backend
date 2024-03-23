@@ -3,7 +3,7 @@ from models.common import DatabaseManager,Event, User, toJson
 from datetime import datetime as dt
 from resources.common import CreditorDetail,EventDue,EventDueSummary
 from bson import ObjectId
-from services import expenseService,eventService,shareService,userService
+from services import expenseService,eventService,shareService,userService, friendService
 dbManager = DatabaseManager()
 dbManager.connect()
 
@@ -168,6 +168,11 @@ def saveEvent(user_id,request_data):
     else:
         new_event.createdBy=ObjectId(user_id)
         new_event.createdAt= dt.utcnow()
+    
+    for user in new_event.users:
+        if user.id != ObjectId(user_id):  
+            friendService.add_friend(user_id, { "friendCode": user.uuid})
+
     new_event.save()
     return new_event
 

@@ -1,7 +1,7 @@
-from models.common import DatabaseManager,Expense,Event, Share, User, toJson
+from models.common import DatabaseManager,Expense,Event, Friends, Share, User, toJson
 from datetime import datetime as dt
 from bson import ObjectId
-from services import expenseService, eventService, shareService
+from services import expenseService, eventService, shareService, friendService
 
 dbManager = DatabaseManager()
 dbManager.connect()
