@@ -190,7 +190,7 @@ def getFriendDues(user_id, friend_id):
 
         friend_json = {
             "name": friend.name,
-            "friendId": str(friend.id),
+            "id": str(friend.id),
             "oweAmount": float(total_owe_amount),
             "whoOwes": overall_who_owes
         }
