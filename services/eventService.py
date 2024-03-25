@@ -15,7 +15,6 @@ def getUserEvents(user_id):
     overallOweAmount = 0
     owingPerson = ""
     events_with_dues = []
-
     for event in events:
         event_id = event["id"]
         event_dues = eventService.getEventDuesForUser(event_id, user_id)
@@ -26,7 +25,6 @@ def getUserEvents(user_id):
         overall_owed += event_dues["totalOwed"]
         overallOweAmount = abs(overall_you_owe-overall_owed)
         owingPerson = "user" if overall_you_owe >= overall_owed else "friend"
-    
 
     response = {
                 "overallOweAmount": float(overallOweAmount),
