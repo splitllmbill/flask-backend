@@ -47,7 +47,7 @@ def upload_file():
     
 @llm_route.route('/expense', methods=['POST'])
 def convert_expense():
-    prompt = "Create a JSON array containing the fields 'name', 'category', 'amount'  and 'date' to represent the expense details of Input. Make sure to use title case for the name and category. If words like relative time are used then represent yesterday as -1, tomorrow as +1 etc. Input: "
+    prompt = "Create a JSON array containing the fields 'name', 'category' and 'amount' only to represent the expense details of Input. Make sure to use title case for the name and category. If words like relative time are used then represent yesterday as -1, tomorrow as +1 etc. Input: "
     data = request.get_json() 
     sentence = data.get('requestData', 0)['sentence']
     prompt+=sentence
