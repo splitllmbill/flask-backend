@@ -192,13 +192,11 @@ def loginUser():
             return Response(response=json.dumps(resp), status=500, mimetype="application/json")
         
 @db_route.route('/logout',methods=['POST'])
-def logoutUser():
+@requestHandler
+def logoutUser(userId, request):
     if request.method == 'POST':
         try:
-            # TODO - Token validation instead of email from request body
-            login_data = request.get_json()
-            email = login_data.get('email')
-            query={"email":email}
+            query={"id":userId}
             user = dbManager.findOne(User,query)
             toUpdate = dict()
             toUpdate['token'] = None
