@@ -17,13 +17,13 @@ def getUserEvents(user_id):
     events_with_dues = []
     for event in events:
         event_id = event["id"]
-        event_dues = eventService.getEventDuesForUser(event_id, user_id)
+        # event_dues = eventService.getEventDuesForUser(event_id, user_id)
         event_dict = event.to_mongo().to_dict()
-        event_dict["dues"] = event_dues
+        event_dict["dues"] = {}
         events_with_dues.append(event_dict)
-        overall_you_owe += event_dues["totalDebt"]
-        overall_owed += event_dues["totalOwed"]
-        overallOweAmount = abs(overall_you_owe-overall_owed)
+        # overall_you_owe += event_dues["totalDebt"]
+        # overall_owed += event_dues["totalOwed"]
+        # overallOweAmount = abs(overall_you_owe-overall_owed)
         owingPerson = "user" if overall_you_owe >= overall_owed else "friend"
 
     response = {
