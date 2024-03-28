@@ -1,6 +1,9 @@
 from models.common import DatabaseManager, Event, Expense, Friends, User
 from mongoengine import Q
 
+db_manager = DatabaseManager()
+db_manager.connect()
+
 def getFriendDetails(user_id, friend_id):
     friend = User.objects(id=friend_id).first()
     user = User.objects(id=user_id).first()
@@ -59,17 +62,12 @@ def getFriendDetails(user_id, friend_id):
         return None
     
 def get_friend_list(user_id):
-    db_manager = DatabaseManager()
-    db_manager.connect()
-
     user = db_manager.findOne(User, {'id': user_id})
     if not user:
-        db_manager.disconnect()
         return {"error": "User not found"}
 
     friends_document = db_manager.findOne(Friends, {'userId': user_id})
     if not friends_document:
-        db_manager.disconnect()
         return {"error": "User has no friends"}
 
     friend_owe = {}
@@ -83,8 +81,6 @@ def get_friend_list(user_id):
         # Update overall owe amounts
         overall_you_owe += dues['oweAmount'] if dues['whoOwes'] == 'user' else 0
         overall_you_are_owed += dues['oweAmount'] if dues['whoOwes'] == 'friend' else 0
-
-    db_manager.disconnect()
 
     response = {
         "overallYouOwe": float(abs(overall_you_owe)),

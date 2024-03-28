@@ -131,15 +131,24 @@ def signup():
     if request.method == 'POST':
         try:
             user_data = request.get_json()
-            inviteCode = user_data.get('inviteCode')
-            # referred_user = referralService.getUserByInviteCode(inviteCode)
+            inviteCode = user_data['inviteCode']
+            referred_user = referralService.getUserByInviteCode(inviteCode)
+            if not referred_user:
+                resp = {'message': 'Invalid Invite Code. Please try again'}
+                return Response(response=json.dumps(resp), status=400, mimetype="application/json")
             del user_data['inviteCode']
+            
+            # save user info
             new_user = User(**user_data)
             passwordHash = ph.hash(new_user.password)
             new_user.password = passwordHash
             new_user.createdAt = datetime.datetime.utcnow
             new_user.updatedAt = datetime.datetime.utcnow
             new_user.save()
+
+            referralService.addReferredUser(inviteCode,new_user.id)
+        
+            # save account info
             new_account = Account()
             new_account.createdAt = datetime.datetime.utcnow
             new_account.updatedAt = datetime.datetime.utcnow
@@ -150,6 +159,8 @@ def signup():
             toUpdate['account'] = new_account.id
             dbManager.update(new_user,**toUpdate)
 
+
+            # save referral info
             user_referral = Referral()
             user_referral.userId = new_user.id
             user_referral.count = 0
@@ -157,6 +168,8 @@ def signup():
             user_referral.updatedAt = datetime.datetime.utcnow
             user_referral.save()
 
+
+            # save verification info
             user_verification = Verification()
             user_verification.userId = new_user.id
             user_verification.createdAt = datetime.datetime.utcnow
@@ -416,8 +429,8 @@ def getEventUsers(user_id, request, type, id):
     return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('/invite/generate', methods=['PUT'])
-def generateInvite():
-    session_user_id = validate_jwt_token(request)
-    referralService.generateInviteCode(session_user_id)
-    r=flaskResponse(ResponseStatus.SUCCESS,session_user_id)
+@requestHandler
+def generateInvite(user_id, request):
+    result = referralService.generateInviteCode(user_id)
+    r=flaskResponse(ResponseStatus.SUCCESS,result)
     return r
