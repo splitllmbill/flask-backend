@@ -1,7 +1,7 @@
 import datetime
 import json
 from bson import ObjectId
-from flask import Blueprint, request, Response, current_app
+from flask import Blueprint, jsonify, request, Response, current_app
 from werkzeug.exceptions import BadRequest
 from util.response import ResponseStatus, flaskResponse
 from mongoengine.queryset.visitor import Q
@@ -427,3 +427,18 @@ def deleteFriend(userId, request):
     requestData = request.get_json()
     result = friendService.delete_friend(userId,requestData)
     return flaskResponse(ResponseStatus.SUCCESS,result)
+
+@db_route.route('/changePassword', methods = ['PUT'])
+@requestHandler
+def changePassword(userId, request):
+    requestData = request.get_json()
+    result = userService.changePassword(userId,requestData)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
+
+@db_route.route('/forgotPassword', methods=['POST'])
+def forgotPassword():
+    requestData = request.get_json()
+    if requestData is None:
+        return jsonify({"error": "Request body is empty"}), 400
+    result = userService.forgotPassword(requestData)
+    return jsonify(result)
