@@ -4,6 +4,7 @@ from datetime import datetime as dt
 from resources.common import CreditorDetail,EventDue,EventDueSummary
 from bson import ObjectId
 from services import expenseService,eventService,shareService,userService, friendService
+
 dbManager = DatabaseManager()
 dbManager.connect()
 
@@ -52,7 +53,6 @@ def getEventDues(event_id):
             user_payees = {share.userId.id: [] for share in shares}
         if amounts_owed == {}:
             amounts_owed = {share.userId.id: {} for share in shares}
-        
         for share in shares:
             share_amount = float(share.amount)
             participant_id = share.userId.id
@@ -67,14 +67,14 @@ def getEventDues(event_id):
                     user_payees[participant_id].append(payer_id)
                 else:
                     user_payees[participant_id] = [payer_id]
-                amounts_owed[participant_id][payer_id] = amounts_owed[participant_id].get(payer_id, 0) + share_amount
-
+                if participant_id in amounts_owed:
+                    amounts_owed[participant_id][payer_id] = amounts_owed[participant_id].get(payer_id, 0) + share_amount
     result = {}
     user_name_map = {}
     for user, debts in amounts_owed.items():
         for payee, amount in debts.items():
             newAmount = amount
-            if payee in user_payees and user in amounts_owed[payee]:
+            if payee in user_payees and payee in amounts_owed and user in amounts_owed[payee]:
                 newAmount = amount - amounts_owed[payee][user] 
                 print(user, payee, newAmount)
                 if newAmount > 0:

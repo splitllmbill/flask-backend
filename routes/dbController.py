@@ -10,8 +10,9 @@ from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
 
-from services import expenseService,eventService,shareService, friendService, userService
-from models.common import Account, DatabaseManager,User, toJson
+from services import expenseService,eventService,shareService, friendService, referralService, userService
+from models.common import Account, DatabaseManager,User, Referral, Verification, toJson
+
 from util.auth import validate_jwt_token
 from util.response import ResponseStatus, flaskResponse
 from util.requestHandler import requestHandler
@@ -131,6 +132,14 @@ def signup():
     if request.method == 'POST':
         try:
             user_data = request.get_json()
+            inviteCode = user_data['inviteCode']
+            referred_user = referralService.getUserByInviteCode(inviteCode)
+            if not referred_user:
+                resp = {'message': 'Invalid Invite Code. Please try again'}
+                return Response(response=json.dumps(resp), status=400, mimetype="application/json")
+            del user_data['inviteCode']
+            
+            # save user info
             new_user = User(**user_data)
             passwordHash = ph.hash(new_user.password)
             new_user.password = passwordHash
@@ -138,7 +147,12 @@ def signup():
             new_user.updatedAt = datetime.datetime.utcnow
             new_user.uuid = userService.generate_user_code()
             new_user.save()
+
+            referralService.addReferredUser(inviteCode,new_user.id)
+        
+            # save account info
             new_account = Account()
+            new_account.createdAt = datetime.datetime.utcnow
             new_account.updatedAt = datetime.datetime.utcnow
             new_account.userId = new_user.id
             new_account.save()
@@ -146,6 +160,24 @@ def signup():
             toUpdate['updatedAt'] = datetime.datetime.utcnow
             toUpdate['account'] = new_account.id
             dbManager.update(new_user,**toUpdate)
+
+
+            # save referral info
+            user_referral = Referral()
+            user_referral.userId = new_user.id
+            user_referral.count = 0
+            user_referral.createdAt = datetime.datetime.utcnow
+            user_referral.updatedAt = datetime.datetime.utcnow
+            user_referral.save()
+
+
+            # save verification info
+            user_verification = Verification()
+            user_verification.userId = new_user.id
+            user_verification.createdAt = datetime.datetime.utcnow
+            user_verification.updatedAt = datetime.datetime.utcnow
+            user_verification.save()
+
             del new_user.createdAt, new_user.updatedAt, new_user.password, new_user.account
             return Response(response=json.dumps(toJson(new_user)), status=201, mimetype="application/json")
         except NotUniqueError as e:
@@ -398,21 +430,27 @@ def deleteEvent(event_id):
 @db_route.route('/user/friends', methods=['GET'])
 @requestHandler
 def get_user_friends(user_id, request):
-    result = friendService.get_friend_list(user_id);
-    return flaskResponse(ResponseStatus.SUCCESS,result);
+    result = friendService.get_friend_list(user_id)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('/user/expense/friend/<friend_id>', methods=['GET'])
 @requestHandler
 def getFriendExpenses(user_id, request, friend_id):
-    result = friendService.getFriendDetails(user_id,friend_id);
-    return flaskResponse(ResponseStatus.SUCCESS,result);
-
+    result = friendService.getFriendDetails(user_id,friend_id)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('/<type>/<id>/users', methods=['GET'])
 @requestHandler
 def getEventUsers(user_id, request, type, id):
-    result = eventService.getEventOrFriendUsers(user_id,type,id);
-    return flaskResponse(ResponseStatus.SUCCESS,result);
+    result = eventService.getEventOrFriendUsers(user_id,type,id)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
+
+@db_route.route('/invite/generate', methods=['PUT'])
+@requestHandler
+def generateInvite(user_id, request):
+    result = referralService.generateInviteCode(user_id)
+    r=flaskResponse(ResponseStatus.SUCCESS,result)
+    return r
 
 @db_route.route('/addFriend', methods = ['POST'])
 @requestHandler
