@@ -4,6 +4,7 @@ from datetime import datetime as dt
 from resources.common import CreditorDetail,EventDue,EventDueSummary
 from bson import ObjectId
 from services import expenseService,eventService,shareService,userService, friendService
+
 dbManager = DatabaseManager()
 dbManager.connect()
 

@@ -7,6 +7,9 @@ from services import friendService
 dbManager = DatabaseManager()
 dbManager.connect()
 
+db_manager = DatabaseManager()
+db_manager.connect()
+
 def getFriendDetails(user_id, friend_id):
     friend = dbManager.findOne(User,{"id":friend_id})
     user = dbManager.findOne(User,{"id":user_id})
@@ -66,7 +69,6 @@ def getFriendDetails(user_id, friend_id):
         return None
     
 def get_friend_list(user_id):
-
     user = dbManager.findOne(User, {"id": user_id})
     if not user:
         return {"error": "User not found"}
