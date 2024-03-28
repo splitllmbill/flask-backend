@@ -1,9 +1,14 @@
+import secrets
+import string
 import uuid
+from argon2 import PasswordHasher
 from bson import ObjectId
 from models.common import Account, DatabaseManager, User
 
 dbManager = DatabaseManager()
 dbManager.connect()
+
+ph = PasswordHasher()
 
 def getUserNameById(user_id):
     query = {
@@ -64,3 +69,33 @@ def putUserAccount(userId, newData):
 def generate_user_code():
     # Generate a UUID (Version 4) as a unique user code
     return str(uuid.uuid4())
+
+def changePassword(userId, requestData):
+    user = User.objects.get(id=userId)
+    if user is None:
+        return {"message":"User does not exist"}
+    passwordHash = ph.hash(requestData['password'])
+    user.password = passwordHash
+    user.save()
+    return {"message":"Password updated successfully"}
+
+def forgotPassword(requestData):
+    user = User.objects.get(email=requestData['email'])
+    if user is None:
+        return {"message":"User does not exist"}
+    new_password = generate_random_password()  
+    password_hash = ph.hash(new_password)  
+    user.password = password_hash
+    user.save()
+    # Implement this function to send an email with the new password    
+    return {
+        "message": "Password reset successfully. Please check the console for the new password.",
+        "new_password": new_password
+    }
+
+
+def generate_random_password(length=12):
+    alphabet = string.ascii_letters + string.digits
+    password = ''.join(secrets.choice(alphabet) for _ in range(length))
+    return password
+    
