@@ -63,7 +63,7 @@ def createExpense(userId, requestData):
     if requestData["type"] == "normal":
         new_expense["paidBy"] = ObjectId(userId) 
     else:
-        new_expense["paidBy"] = requestData["paidBy"]
+        new_expense["paidBy"] = ObjectId(requestData["paidBy"])
     new_expense.createdBy = ObjectId(userId)
     new_expense.updatedBy = ObjectId(userId)
     new_expense.createdAt = dt.utcnow()
