@@ -109,6 +109,7 @@ class User(Document):
     createdAt = DateTimeField()
     updatedAt = DateTimeField()
     account = ReferenceField('Account')
+    uuid = StringField(required=True,unique=True)
 
 class Account(Document):
     userId = ReferenceField('User')

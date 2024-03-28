@@ -1,7 +1,7 @@
-from models.common import DatabaseManager,Expense,Event, Share, User, toJson
+from models.common import DatabaseManager,Expense,Event, Friends, Share, User, toJson
 from datetime import datetime as dt
 from bson import ObjectId
-from services import expenseService, eventService, shareService
+from services import expenseService, eventService, shareService, friendService
 
 dbManager = DatabaseManager()
 dbManager.connect()
@@ -49,7 +49,7 @@ def createExpense(userId, requestData):
     for share in shares:
         shareTotal =shareTotal+share["amount"]
 
-    if shareTotal != requestData["amount"]:
+    if requestData['type'] != "normal" and shareTotal != requestData["amount"]:
          raise ValueError("Expense amount not equal to sum of shares")
     del requestData['shares']
     new_shares = []
@@ -60,12 +60,16 @@ def createExpense(userId, requestData):
     new_expense = Expense(**requestData)
     new_expense.shares = new_shares
     new_expense.type=requestData["type"]
-    new_expense.paidBy =ObjectId(requestData["paidBy"])
+    if requestData["type"] == "normal":
+        new_expense["paidBy"] = ObjectId(userId) 
+    else:
+        new_expense["paidBy"] = requestData["paidBy"]
     new_expense.createdBy = ObjectId(userId)
     new_expense.updatedBy = ObjectId(userId)
     new_expense.createdAt = dt.utcnow()
     new_expense.updatedAt = dt.utcnow()
     new_expense.category = requestData["category"]
+    new_expense.date = requestData["date"]
 
     if requestData['type'] == 'group' and requestData["eventId"]:
         event = dbManager.findOne(Event, {"id": ObjectId(requestData["eventId"])})

@@ -1,7 +1,7 @@
 import datetime
 import json
 from bson import ObjectId
-from flask import Blueprint, request, Response, current_app
+from flask import Blueprint, jsonify, request, Response, current_app
 from werkzeug.exceptions import BadRequest
 from util.response import ResponseStatus, flaskResponse
 from mongoengine.queryset.visitor import Q
@@ -10,8 +10,9 @@ from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
 
-from services import expenseService,eventService,shareService, friendService,referralService
+from services import expenseService,eventService,shareService, friendService, referralService, userService
 from models.common import Account, DatabaseManager,User, Referral, Verification, toJson
+
 from util.auth import validate_jwt_token
 from util.response import ResponseStatus, flaskResponse
 from util.requestHandler import requestHandler
@@ -144,6 +145,7 @@ def signup():
             new_user.password = passwordHash
             new_user.createdAt = datetime.datetime.utcnow
             new_user.updatedAt = datetime.datetime.utcnow
+            new_user.uuid = userService.generate_user_code()
             new_user.save()
 
             referralService.addReferredUser(inviteCode,new_user.id)
@@ -222,13 +224,11 @@ def loginUser():
             return Response(response=json.dumps(resp), status=500, mimetype="application/json")
         
 @db_route.route('/logout',methods=['POST'])
-def logoutUser():
+@requestHandler
+def logoutUser(userId, request):
     if request.method == 'POST':
         try:
-            # TODO - Token validation instead of email from request body
-            login_data = request.get_json()
-            email = login_data.get('email')
-            query={"email":email}
+            query={"id":userId}
             user = dbManager.findOne(User,query)
             toUpdate = dict()
             toUpdate['token'] = None
@@ -242,7 +242,7 @@ def logoutUser():
 
 @db_route.route('/account', methods=['PUT'])
 @requestHandler
-def updateAccount(userId):
+def updateAccount(userId, request):
     requestData = request.get_json()
     query = {
         "id": ObjectId(userId)
@@ -250,6 +250,19 @@ def updateAccount(userId):
     user = dbManager.findOne(User, query)
     dbManager.update(user.account, **requestData)
     return flaskResponse(ResponseStatus.SUCCESS)
+
+@db_route.route('/useraccount', methods=['PUT'])
+@requestHandler
+def updateUserAccount(userId, request):
+    requestData = request.get_json()
+    userService.putUserAccount(userId,requestData)
+    return flaskResponse(ResponseStatus.SUCCESS)
+
+@db_route.route('/useraccount', methods=['GET'])
+@requestHandler
+def getAccount(userId, request):
+    account = userService.getUserAccount(userId)
+    return flaskResponse(ResponseStatus.SUCCESS, account)
 
 @db_route.route('/expense/<expenseId>', methods = ['GET'])
 @requestHandler
@@ -298,8 +311,12 @@ def deleteExpense(userId, request, expenseId):
 @requestHandler
 def getUserEvents(userId, request):
         session_user_id = validate_jwt_token(request)
-        events=eventService.getUserEvents(userId)
-        return flaskResponse(ResponseStatus.SUCCESS, events)
+        try:
+            events=eventService.getUserEvents(userId)
+            return flaskResponse(ResponseStatus.SUCCESS, events)
+        except Exception as e:
+            print(f"Error in getAllExpensesForUser route: {e}")
+            return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR, str(e))
     
 
 @db_route.route('event/<event_id>/expenses', methods=['GET'])
@@ -434,3 +451,32 @@ def generateInvite(user_id, request):
     result = referralService.generateInviteCode(user_id)
     r=flaskResponse(ResponseStatus.SUCCESS,result)
     return r
+
+@db_route.route('/addFriend', methods = ['POST'])
+@requestHandler
+def addFriend(userId, request):
+    requestData = request.get_json()
+    result = friendService.add_friend(userId,requestData)
+    return result
+
+@db_route.route('/deleteFriend', methods = ['DELETE'])
+@requestHandler
+def deleteFriend(userId, request):
+    requestData = request.get_json()
+    result = friendService.delete_friend(userId,requestData)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
+
+@db_route.route('/changePassword', methods = ['PUT'])
+@requestHandler
+def changePassword(userId, request):
+    requestData = request.get_json()
+    result = userService.changePassword(userId,requestData)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
+
+@db_route.route('/forgotPassword', methods=['POST'])
+def forgotPassword():
+    requestData = request.get_json()
+    if requestData is None:
+        return jsonify({"error": "Request body is empty"}), 400
+    result = userService.forgotPassword(requestData)
+    return jsonify(result)

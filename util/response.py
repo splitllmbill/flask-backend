@@ -25,7 +25,7 @@ def flaskResponse(status, response = None):
             defaultResponse['message'] = 'No record found for id'
             response = defaultResponse
         if type(response) == str:
-            defaultResponse['message'] = 'Record with given id successfully ' + response + 'd'
+            defaultResponse['message'] = response
             response = defaultResponse
         
         if type(response) == dict or type(response) == list :
