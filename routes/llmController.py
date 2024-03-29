@@ -74,7 +74,6 @@ def upload_file():
         response = model.generate_content(["Extract necessary information from this bill image of the items excluding tax and service charges into a JSON array with objects having properties - slno, item name, quantity, amount and total amount. Map that JSON array to a field called items in the final result. Also another field tax should be mapped to a json array having fields like type, percent and amount. Bill image: ", img],safety_settings=safety_settings)
         response.resolve()
         result = response.text.replace('`','').replace('json','').strip()
-        result = response.text
         res = json.loads(result)
     except Exception as e:
         traceback.print_exc()
