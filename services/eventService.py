@@ -110,10 +110,11 @@ def getEventDues(event_id):
     return final_result
 
 def getEventDuesForUser(event_id, user_id):
-    result = {"inDebtTo": [], "isOwed": [], "totalDebt": 0, "totalOwed": 0}
+    result = {"userName":"","inDebtTo": [], "isOwed": [], "totalDebt": 0, "totalOwed": 0}
     try:
         event_dues_summary = getEventDues(event_id)
         user_name = userService.getUserNameById(user_id)
+        result["userName"]=user_name
         print(event_dues_summary, "summary")
 
         # Assuming event_dues_summary is a single object, not iterable

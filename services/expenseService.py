@@ -71,7 +71,7 @@ def createExpense(userId, requestData):
     new_expense.category = requestData["category"]
     new_expense.date = requestData["date"]
 
-    if requestData['type'] == 'group' and requestData["eventId"]:
+    if requestData['type'] in ['group','settle'] and requestData["eventId"]:
         event = dbManager.findOne(Event, {"id": ObjectId(requestData["eventId"])})
         if event:
             new_expense.eventId = ObjectId(requestData["eventId"])
@@ -162,6 +162,8 @@ def getEventExpensesAlongWithUserSummary(userId, eventId):
             "expenseName": expense.expenseName,
             "expenseId": str(expense.id),
             "expenseDate": str(expense.date),
+            "type":expense.type,
+            "paidBy":str(expense.paidBy.name),
             "amount": float(expense.amount),
             "category": expense.category,
             "user_summary": summary
