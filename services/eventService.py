@@ -47,63 +47,55 @@ def getEventDues(event_id):
     amounts_owed = {}
     user_payees = {}
     for expense in expenses:
-        payer_id = ObjectId(expense.paidBy.id)
+        payer_id = str(expense.paidBy.id)
+        if payer_id not in amounts_owed:
+            amounts_owed[payer_id]={}
         shares = expense.shares
-        if user_payees == {}:
-            user_payees = {share.userId.id: [] for share in shares}
-        if amounts_owed == {}:
-            amounts_owed = {share.userId.id: {} for share in shares}
         for share in shares:
             share_amount = float(share.amount)
-            participant_id = share.userId.id
-            participant_id_str = str(share.userId.id)
-            if participant_id != payer_id:
-                if participant_id in user_balances:
-                    user_balances[participant_id] += share_amount
-                else:
-                    user_balances[participant_id] = share_amount
-                user_balances[payer_id] -= share_amount
-                if participant_id in user_payees is not None and user_payees[participant_id] is not None:
-                    user_payees[participant_id].append(payer_id)
-                else:
-                    user_payees[participant_id] = [payer_id]
-                if participant_id in amounts_owed:
-                    amounts_owed[participant_id][payer_id] = amounts_owed[participant_id].get(payer_id, 0) + share_amount
+            participant_id = str(share.userId.id)
+            if participant_id not in amounts_owed[payer_id]:
+                amounts_owed[payer_id][participant_id]=float(0)
+            amounts_owed[payer_id][participant_id]+=share_amount
     result = {}
     user_name_map = {}
-    for user, debts in amounts_owed.items():
-        for payee, amount in debts.items():
-            newAmount = amount
-            if payee in user_payees and payee in amounts_owed and user in amounts_owed[payee]:
-                newAmount = amount - amounts_owed[payee][user] 
-                print(user, payee, newAmount)
-                if newAmount > 0:
-                    amounts_owed[payee][user] = newAmount
-                    print(user, payee, newAmount,"inside")
+    calculated_list=[]
+    for payer, debts in amounts_owed.items():
+        for participant, amount in debts.items():
+            if payer+participant not in calculated_list and participant+payer not in calculated_list:
+                payer_to_participant = amount
+                participant_to_payer = 0
+                reverse_exist=False
+                if participant in amounts_owed:
+                    if payer in amounts_owed[participant]:
+                        reverse_exist=True
+                        participant_to_payer=amounts_owed[participant][payer]
+                net_amount = payer_to_participant - participant_to_payer
+                if net_amount>0:
+                    amounts_owed[payer][participant]=net_amount
+                    if reverse_exist:
+                        amounts_owed[participant][payer]=0
+                elif net_amount<0:
+                    if reverse_exist:
+                        amounts_owed[participant][payer]=net_amount*-1
+                    amounts_owed[payer][participant]=0
                 else:
-                    amounts_owed[payee][user] = 0
-                    newAmount = 0
-            if user not in user_name_map:
-                user_name_map[str(user)] = userService.getUserNameById(user)
-            if payee not in user_name_map:
-                user_name_map[str(payee)] = userService.getUserNameById(payee)
-            if newAmount == 0:
-                continue
-            temp = {str(payee): newAmount}
-            if result == {} or str(user) not in result:
-                result[str(user)] = []
-                result[str(user)].append(temp)
-            else:    
-                result[str(user)].append(temp)
+                    if reverse_exist:
+                        amounts_owed[participant][payer]=0
+                    amounts_owed[payer][participant]=0
+                if payer not in user_name_map:
+                    user_name_map[payer]= userService.getUserNameById(payer)
+                if participant not in user_name_map:
+                    user_name_map[participant]= userService.getUserNameById(participant)
+                calculated_list.append(payer+participant)
     event_dues = []
-    for debtor in result:
+    for debtor in amounts_owed:
         debtor_name = user_name_map[str(debtor)]
         creditor_details = []
-        for temp_creditor in result[debtor]:
-            print("temp: ", temp_creditor)
-            for creditor in temp_creditor:
-                creditor_name = user_name_map[str(creditor)]
-                amount = temp_creditor[creditor]
+        for creditor in amounts_owed[debtor]:
+            creditor_name = user_name_map[str(creditor)]
+            amount = amounts_owed[debtor][creditor]
+            if amount!=0:
                 creditor_details.append(CreditorDetail(creditor, creditor_name, amount).__dict__)
         event_dues.append(EventDue(debtor, debtor_name, creditor_details).__dict__)
 
