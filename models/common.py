@@ -1,6 +1,6 @@
 from decimal import Decimal
 import os
-from mongoengine import Document,DecimalField, StringField, IntField, DateTimeField, ReferenceField, ListField, connect, BooleanField
+from mongoengine import Document,DecimalField, StringField, IntField, DateTimeField, ReferenceField, ListField, BinaryField, connect, BooleanField
 from mongoengine import connect, disconnect
 from dotenv import load_dotenv
 from bson import ObjectId, Timestamp, DBRef
@@ -166,3 +166,8 @@ class Share(Document):
 class Friends(Document):
     userId = ReferenceField('User')
     friends = ListField(ReferenceField('User'))
+
+class BillImages(Document):
+    expenseId = ReferenceField('Expense')
+    name = StringField(required=True)
+    data = BinaryField(required=True)
