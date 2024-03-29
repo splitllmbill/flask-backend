@@ -48,28 +48,28 @@ def getEventDues(event_id):
     user_payees = {}
     for expense in expenses:
         payer_id = str(expense.paidBy.id)
-        if payer_id not in amounts_owed:
-            amounts_owed[payer_id]={}
         shares = expense.shares
         for share in shares:
             share_amount = float(share.amount)
             participant_id = str(share.userId.id)
-            if participant_id not in amounts_owed[payer_id]:
-                amounts_owed[payer_id][participant_id]=float(0)
-            amounts_owed[payer_id][participant_id]+=share_amount
+            if participant_id not in amounts_owed:
+                amounts_owed[participant_id]={}
+            if payer_id not in amounts_owed[participant_id]:
+                amounts_owed[participant_id][payer_id]=float(0)
+            amounts_owed[participant_id][payer_id]+=share_amount
     result = {}
     user_name_map = {}
     calculated_list=[]
-    for payer, debts in amounts_owed.items():
-        for participant, amount in debts.items():
+    for participant, debts in amounts_owed.items():
+        for payer, amount in debts.items():
             if payer+participant not in calculated_list and participant+payer not in calculated_list:
-                payer_to_participant = amount
-                participant_to_payer = 0
+                payer_to_participant = 0
+                participant_to_payer = amount
                 reverse_exist=False
-                if participant in amounts_owed:
-                    if payer in amounts_owed[participant]:
+                if payer in amounts_owed:
+                    if participant in amounts_owed[payer]:
                         reverse_exist=True
-                        participant_to_payer=amounts_owed[participant][payer]
+                        payer_to_participant=amounts_owed[payer][participant]
                 net_amount = payer_to_participant - participant_to_payer
                 if net_amount>0:
                     amounts_owed[payer][participant]=net_amount
@@ -88,6 +88,7 @@ def getEventDues(event_id):
                 if participant not in user_name_map:
                     user_name_map[participant]= userService.getUserNameById(participant)
                 calculated_list.append(payer+participant)
+    
     event_dues = []
     for debtor in amounts_owed:
         debtor_name = user_name_map[str(debtor)]
@@ -98,8 +99,9 @@ def getEventDues(event_id):
             if amount!=0:
                 creditor_details.append(CreditorDetail(creditor, creditor_name, amount).__dict__)
         event_dues.append(EventDue(debtor, debtor_name, creditor_details).__dict__)
-
+    
     final_result = EventDueSummary(event_dues)
+   
     return final_result
 
 def getEventDuesForUser(event_id, user_id):
