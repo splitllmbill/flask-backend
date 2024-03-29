@@ -35,73 +35,78 @@ def getUserEvents(user_id):
     return response
 
 def getEventDues(event_id):
-    query={
-        "id":event_id
-    }
-    event = dbManager.findOne(Event,query)
-    if event is None:
-        raise ValueError("Event not found")
+    try:
+        query={
+            "id":event_id
+        }
+        event = dbManager.findOne(Event,query)
+        if event is None:
+            raise ValueError("Event not found")
 
-    user_balances = {ObjectId(user.id): 0 for user in event.users}
-    expenses = expenseService.getEventExpenses(event.id)
-    amounts_owed = {}
-    user_payees = {}
-    for expense in expenses:
-        payer_id = str(expense.paidBy.id)
-        shares = expense.shares
-        for share in shares:
-            share_amount = float(share.amount)
-            participant_id = str(share.userId.id)
-            if participant_id not in amounts_owed:
-                amounts_owed[participant_id]={}
-            if payer_id not in amounts_owed[participant_id]:
-                amounts_owed[participant_id][payer_id]=float(0)
-            amounts_owed[participant_id][payer_id]+=share_amount
-    result = {}
-    user_name_map = {}
-    calculated_list=[]
-    for participant, debts in amounts_owed.items():
-        for payer, amount in debts.items():
-            if payer+participant not in calculated_list and participant+payer not in calculated_list:
-                payer_to_participant = 0
-                participant_to_payer = amount
-                reverse_exist=False
-                if payer in amounts_owed:
-                    if participant in amounts_owed[payer]:
-                        reverse_exist=True
-                        payer_to_participant=amounts_owed[payer][participant]
-                net_amount = payer_to_participant - participant_to_payer
-                if net_amount>0:
-                    amounts_owed[payer][participant]=net_amount
-                    if reverse_exist:
+        user_balances = {ObjectId(user.id): 0 for user in event.users}
+        expenses = expenseService.getEventExpenses(event.id)
+        amounts_owed = {}
+        user_payees = {}
+        for expense in expenses:
+            payer_id = str(expense.paidBy.id)
+            shares = expense.shares
+            for share in shares:
+                share_amount = float(share.amount)
+                participant_id = str(share.userId.id)
+                if participant_id not in amounts_owed:
+                    amounts_owed[participant_id]={}
+                if payer_id not in amounts_owed[participant_id]:
+                    amounts_owed[participant_id][payer_id]=float(0)
+                amounts_owed[participant_id][payer_id]+=share_amount
+        result = {}
+        user_name_map = {}
+        calculated_list=[]
+        for participant, debts in amounts_owed.items():
+            for payer, amount in debts.items():
+                if payer+participant not in calculated_list and participant+payer not in calculated_list:
+                    payer_to_participant = 0
+                    participant_to_payer = amount
+                    reverse_exist=False
+                    if payer in amounts_owed:
+                        if participant in amounts_owed[payer]:
+                            reverse_exist=True
+                            payer_to_participant=amounts_owed[payer][participant]
+                    net_amount = participant_to_payer - payer_to_participant
+                    if net_amount>0:
+                        amounts_owed[participant][payer]=net_amount
+                        if reverse_exist:
+                            amounts_owed[payer][participant]=0
+                    elif net_amount<0:
+                        if not reverse_exist:
+                            amounts_owed[payer]={}
+                        amounts_owed[payer][participant]=net_amount*-1
                         amounts_owed[participant][payer]=0
-                elif net_amount<0:
-                    if reverse_exist:
-                        amounts_owed[participant][payer]=net_amount*-1
-                    amounts_owed[payer][participant]=0
-                else:
-                    if reverse_exist:
+                    else:
+                        if reverse_exist:
+                            amounts_owed[payer][participant]=0
                         amounts_owed[participant][payer]=0
-                    amounts_owed[payer][participant]=0
-                if payer not in user_name_map:
-                    user_name_map[payer]= userService.getUserNameById(payer)
-                if participant not in user_name_map:
-                    user_name_map[participant]= userService.getUserNameById(participant)
-                calculated_list.append(payer+participant)
+                    if payer not in user_name_map:
+                        user_name_map[payer]= userService.getUserNameById(payer)
+                    if participant not in user_name_map:
+                        user_name_map[participant]= userService.getUserNameById(participant)
+                    calculated_list.append(payer+participant)
+        
+        event_dues = []
+        for debtor in amounts_owed:
+            debtor_name = user_name_map[str(debtor)]
+            creditor_details = []
+            for creditor in amounts_owed[debtor]:
+                creditor_name = user_name_map[str(creditor)]
+                amount = amounts_owed[debtor][creditor]
+                if amount!=0:
+                    creditor_details.append(CreditorDetail(creditor, creditor_name, amount).__dict__)
+            event_dues.append(EventDue(debtor, debtor_name, creditor_details).__dict__)
+        
+        final_result = EventDueSummary(event_dues)
     
-    event_dues = []
-    for debtor in amounts_owed:
-        debtor_name = user_name_map[str(debtor)]
-        creditor_details = []
-        for creditor in amounts_owed[debtor]:
-            creditor_name = user_name_map[str(creditor)]
-            amount = amounts_owed[debtor][creditor]
-            if amount!=0:
-                creditor_details.append(CreditorDetail(creditor, creditor_name, amount).__dict__)
-        event_dues.append(EventDue(debtor, debtor_name, creditor_details).__dict__)
-    
-    final_result = EventDueSummary(event_dues)
-   
+    except ValueError as ve:
+        # Handle the specific exception raised when the event is not found
+        return {"error": str(ve)}
     return final_result
 
 def getEventDuesForUser(event_id, user_id):

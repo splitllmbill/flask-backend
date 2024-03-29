@@ -315,7 +315,7 @@ def getUserEvents(userId, request):
             events=eventService.getUserEvents(userId)
             return flaskResponse(ResponseStatus.SUCCESS, events)
         except Exception as e:
-            print(f"Error in getAllExpensesForUser route: {e}")
+            print(f"Error in getUserEvents route: {e}")
             return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR, str(e))
     
 
