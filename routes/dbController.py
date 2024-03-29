@@ -304,8 +304,8 @@ def updateExpense(userId, request, expenseId):
 @db_route.route('/expense/<expenseId>', methods = ['DELETE'])
 @requestHandler
 def deleteExpense(userId, request, expenseId):
-    status = expenseService.deleteExpense(expenseId)
-    return flaskResponse(ResponseStatus.SUCCESS,status)
+    result = expenseService.deleteExpense(expenseId)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('user/events', methods=['GET'])
 @requestHandler

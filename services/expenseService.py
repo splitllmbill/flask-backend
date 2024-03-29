@@ -127,7 +127,7 @@ def deleteExpense(expenseId):
     if expense is None:
         return False
     dbManager.delete(expense)
-    return 'delete'
+    return {"message":'Successfully deleted expense', "success":"true"}
 
 def getEventExpenses(eventId):
     query = {
