@@ -45,6 +45,14 @@ def getUserAccount(userId):
         print('Referral does not exist')
         return False
     
+    verification = dbManager.findOne(Verification, query)
+    if verification is None:
+        return False
+    
+    referall = dbManager.findOne(Referral, query)
+    if referall is None:
+        return False
+    
     return {
         "uuid": user.uuid,
         "name": user.name,
