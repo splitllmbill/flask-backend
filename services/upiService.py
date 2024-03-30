@@ -15,6 +15,8 @@ def generateUPILink(userId, amount, note):
     if account is None:
         return False
     upiId = account.upiId
+    if upiId is None:
+        return False
     baseLink = 'pay?pa=' + upiId + '&pn=User1&tn=' + note + '&am=' + str(amount) + '&cu=INR'
     return {
         'upiLink': baseLink
@@ -28,6 +30,8 @@ def generateUPIQR(userId, amount, note):
     if account is None:
         return False
     upiId = account.upiId
+    if upiId is None:
+        return False
     upiData = 'upi://pay?pa=' + upiId + '&pn=User1&tn=' + note + '&am=' + str(amount) + '&cu=INR'
     qr = qrcode.QRCode(
         version=1,
