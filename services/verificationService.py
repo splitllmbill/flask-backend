@@ -31,7 +31,6 @@ def validateCode(user_id, code, codeType, field):
     query={"userId":ObjectId(user_id)}
     user_verification = dbManager.findOne(Verification,query)
     if codeType == 'mobile':
-        print('User code:',code,'Actual code:',user_verification['mobileCode'])
         if code == user_verification['mobileCode']:
             updateVal = {
                 "mobileVerified": True,
@@ -44,7 +43,6 @@ def validateCode(user_id, code, codeType, field):
         else:
             return False
     elif codeType == 'email':
-        print('User code:',code,'Actual code:',user_verification['emailCode'])
         if code == user_verification['emailCode']:
             updateVal = {
                 "emailVerified": True,
@@ -54,7 +52,6 @@ def validateCode(user_id, code, codeType, field):
         else:
             return False
     elif codeType == 'upiNumber':
-        print('User code:',code,'Actual code:',user_verification['upiNumberCode'])
         if code == user_verification['upiNumberCode']:
             updateVal = {
                 "upiNumberVerified": True,

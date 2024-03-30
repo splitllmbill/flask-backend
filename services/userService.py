@@ -56,7 +56,6 @@ def getUserAccount(userId):
     }
 
 def updateUserAccount(userId, newData):
-    print(userId,newData)
     query={
         "id":ObjectId(userId)
     }
