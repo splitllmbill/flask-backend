@@ -30,38 +30,40 @@ def getFriendDetails(user_id, friend_id):
                 elif share.userId == friend and expense.paidBy == user:
                     friend_owe += share.amount
 
-            owe_amount = abs(friend_owe - user_owe)
-            who_owes = "friend" if friend_owe > user_owe else "user"
+            print("user",user_owe,friend_owe)
+            if user_owe > 0 or friend_owe > 0:
+                owe_amount = abs(friend_owe - user_owe)
+                who_owes = "friend" if friend_owe > user_owe else "user"
 
-            expense_details = {
-                "expenseDate": expense.createdAt.isoformat(),
-                "expenseName": expense.expenseName,
-                "expenseId": str(expense.id),
-                "category": expense.category,
-                "user_summary": {
-                    "oweAmount": float(owe_amount),
-                    "whoOwes": who_owes,
-                },
-                "expenseType": expense.type
+                expense_details = {
+                    "expenseDate": expense.createdAt.isoformat(),
+                    "expenseName": expense.expenseName,
+                    "expenseId": str(expense.id),
+                    "category": expense.category,
+                    "user_summary": {
+                        "oweAmount": float(owe_amount),
+                        "whoOwes": who_owes,
+                    },
+                    "expenseType": expense.type
+                }
+                expenses_list.append(expense_details)
+
+                if who_owes == "friend":
+                    total_friend_owe += owe_amount
+                else:
+                    total_user_owe += owe_amount
+
+            total_owe_amount = abs(total_friend_owe - total_user_owe)
+
+            overall_who_owes = "friend" if total_friend_owe > total_user_owe else "user"
+
+            friend_json = {
+                "uuid": friend.uuid,
+                "name": friend.name,
+                "overallOweAmount": float(total_owe_amount),
+                "overallWhoOwes": overall_who_owes,
+                "expenses": expenses_list
             }
-            expenses_list.append(expense_details)
-
-            if who_owes == "friend":
-                total_friend_owe += owe_amount
-            else:
-                total_user_owe += owe_amount
-
-        total_owe_amount = abs(total_friend_owe - total_user_owe)
-
-        overall_who_owes = "friend" if total_friend_owe > total_user_owe else "user"
-
-        friend_json = {
-            "uuid": friend.uuid,
-            "name": friend.name,
-            "overallOweAmount": float(total_owe_amount),
-            "overallWhoOwes": overall_who_owes,
-            "expenses": expenses_list
-        }
 
         return friend_json
     else:
