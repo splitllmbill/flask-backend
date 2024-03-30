@@ -304,8 +304,8 @@ def updateExpense(userId, request, expenseId):
 @db_route.route('/expense/<expenseId>', methods = ['DELETE'])
 @requestHandler
 def deleteExpense(userId, request, expenseId):
-    status = expenseService.deleteExpense(expenseId)
-    return flaskResponse(ResponseStatus.SUCCESS,status)
+    result = expenseService.deleteExpense(expenseId)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('user/events', methods=['GET'])
 @requestHandler
@@ -315,7 +315,7 @@ def getUserEvents(userId, request):
             events=eventService.getUserEvents(userId)
             return flaskResponse(ResponseStatus.SUCCESS, events)
         except Exception as e:
-            print(f"Error in getAllExpensesForUser route: {e}")
+            print(f"Error in getUserEvents route: {e}")
             return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR, str(e))
     
 
