@@ -435,6 +435,12 @@ def getFriendExpenses(user_id, request, friend_id):
     result = friendService.getFriendDetails(user_id,friend_id)
     return flaskResponse(ResponseStatus.SUCCESS,result)
 
+@db_route.route('/user/expense/friend/<friend_id>/settleup', methods=['POST'])
+@requestHandler
+def settleUpFriendDues(user_id, request, friend_id):
+    result = friendService.settleUpFriendDues(user_id,friend_id)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
+
 @db_route.route('/<type>/<id>/users', methods=['GET'])
 @requestHandler
 def getEventUsers(user_id, request, type, id):

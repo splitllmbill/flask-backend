@@ -1,7 +1,10 @@
+import datetime
 import string
 from bson import ObjectId
-from models.common import DatabaseManager, Event, Expense, Friends, User
+from models.common import DatabaseManager, Event, Expense, Friends, Share, User
 from mongoengine import Q
+from services import friendService,expenseService
+from datetime import datetime as dt
 
 dbManager = DatabaseManager()
 dbManager.connect()
@@ -14,7 +17,7 @@ def getFriendDetails(user_id, friend_id):
     user = dbManager.findOne(User,{"id":user_id})
 
     if friend and user:
-        expenses =dbManager.findAll(Expense,{"paidBy__in":[friend,user] ,"type__in":["group","friend"]})
+        expenses =dbManager.findAll(Expense,{"paidBy__in":[friend,user] ,"type__in":["group","friend","settle"]})
         expenses_list = []
         total_owe_amount = 0
         total_friend_owe = 0
@@ -23,14 +26,12 @@ def getFriendDetails(user_id, friend_id):
         for expense in expenses:
             user_owe = 0
             friend_owe = 0
-
             for share in expense.shares:
                 if share.userId == user and expense.paidBy == friend:
                     user_owe += share.amount
                 elif share.userId == friend and expense.paidBy == user:
                     friend_owe += share.amount
 
-            print("user",user_owe,friend_owe)
             if user_owe > 0 or friend_owe > 0:
                 owe_amount = abs(friend_owe - user_owe)
                 who_owes = "friend" if friend_owe > user_owe else "user"
@@ -68,7 +69,7 @@ def getFriendDetails(user_id, friend_id):
         return friend_json
     else:
         return None
-    
+
 def get_friend_list(user_id):
     user = dbManager.findOne(User, {"id": user_id})
     if not user:
@@ -158,6 +159,65 @@ def getNonGroupExpenses(user_id):
 
     return response
 
+
+def settleUpFriendDues(user_id,friend_id):
+    #find events where both user and friend and user are present
+    #simply per event and settle
+    #simply non group expense and settle
+    friend = dbManager.findOne(User,{"id":friend_id})
+    user = dbManager.findOne(User,{"id":user_id})
+    if friend and user:
+        events=dbManager.findAll(Event,{"users__all":[friend,user]})
+        for event in events:
+            net_amount=0
+            expense_ids= [str(expense.id) for expense in event.expenses]
+            expenses=dbManager.findAll(Expense,{"id__in":expense_ids,"paidBy__in":[friend,user]})
+            for expense in expenses:
+                share_ids= [str(share.id) for share in expense.shares]
+                shares=dbManager.findAll(Share,{"id__in":share_ids,"userId__in":[friend,user]})
+                for share in shares:
+                    if str(expense.paidBy.id)==user_id and str(share.userId.id)==friend_id:
+                        net_amount-=float(share.amount)
+                    elif str(expense.paidBy.id)==friend_id and str(share.userId.id)==user_id:
+                        net_amount+=float(share.amount)
+            if net_amount>0:
+                request_data={
+                    "expenseName": user.name+" settled up with "+friend.name+"("+str(event.name)+")" ,
+                    "amount": net_amount,
+                    "paidBy": str(user.id),
+                    "type":"settle",
+                    "eventId": str(event.id),
+                    "category":"settle",
+                    "shares": [
+                        {
+                            "userId": str(friend.id),
+                            "amount": net_amount
+                        },
+                    ],
+                    "date":dt.utcnow()
+                }
+                expenseService.createExpense(userId=user_id,requestData=request_data)
+        friend_details=getFriendDetails(user_id=user_id,friend_id=friend_id)
+        if friend_details["overallWhoOwes"]=="user" and friend_details["overallOweAmount"]!=0:
+            net_amount=friend_details["overallOweAmount"]
+            request_data={
+                "expenseName": user.name+" settled up with "+friend.name,
+                "amount": net_amount,
+                "paidBy": str(user.id),
+                "type":"settle",
+                "category":"settle",
+                "shares": [
+                    {
+                        "userId": str(friend.id),
+                        "amount": net_amount
+                    },
+                ],
+                "date":dt.utcnow()
+            }
+            expenseService.createExpense(userId=user_id,requestData=request_data)            
+        return { "success": 'true', "message": 'Settled successfully!'}
+    else:
+        return { "success": 'false', "message": 'Invalid request'}
 
 def getFriendDues(user_id, friend_id):
     friend = dbManager.findOne(User,{"id":friend_id})
