@@ -2,7 +2,6 @@ import string
 from bson import ObjectId
 from models.common import DatabaseManager, Event, Expense, Friends, User
 from mongoengine import Q
-from services import friendService
 
 dbManager = DatabaseManager()
 dbManager.connect()
@@ -245,7 +244,7 @@ def delete_friend(user_id, requestData):
         return { "success": 'false', "message": 'Cannot delete friend. You have shared groups.'}
 
     # Check if there are any unsettled expenses
-    unsettled_expenses = friendService.getFriendDues(user_id, friend_user.id)
+    unsettled_expenses = getFriendDues(user_id, friend_user.id)
     if unsettled_expenses["oweAmount"] > 0:
         return { "success": 'false', "message": 'Cannot delete friend. There are unsettled expenses.'}
 
