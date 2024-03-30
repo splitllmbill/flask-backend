@@ -1,7 +1,7 @@
 import datetime
 import json
 from bson import ObjectId
-from flask import Blueprint, jsonify, request, Response, current_app
+from flask import Blueprint, jsonify, request, Response, current_app, send_file
 from werkzeug.exceptions import BadRequest
 from util.response import ResponseStatus, flaskResponse
 from mongoengine.queryset.visitor import Q
@@ -10,7 +10,7 @@ from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
 
-from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService
+from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService, upiService
 from models.common import Account, DatabaseManager,User, Referral, Verification, toJson
 
 from util import generator
@@ -502,3 +502,32 @@ def verificationValidate(userId, request):
     if not result:
         return flaskResponse(ResponseStatus.SUCCESS,'Invalid Verification Code')
     return flaskResponse(ResponseStatus.SUCCESS,result)
+
+@db_route.route('/upi/link', methods = ['POST'])
+@requestHandler
+def generateUPILink(userId, request):
+    requestData = request.get_json()
+    dest_userId = requestData['destination']
+    amount = requestData['amount']
+    note = requestData['note']
+    result = upiService.generateUPILink(dest_userId, amount, note)
+    if not result:
+        return flaskResponse(ResponseStatus.SUCCESS,False)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
+
+@db_route.route('/upi/image', methods = ['POST'])
+@requestHandler
+def generateUPIQR(userId, request):
+    requestData = request.get_json()
+    dest_userId = requestData['destination']
+    amount = requestData['amount']
+    note = requestData['note']
+    result = upiService.generateUPIQR(dest_userId, amount, note)
+    if not result:
+        return flaskResponse(ResponseStatus.SUCCESS,False)
+    return send_file(
+        result,
+        mimetype='image/png',
+        as_attachment=True,
+        download_name='qr_code.png'
+    )

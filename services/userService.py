@@ -26,11 +26,23 @@ def getUserAccount(userId):
     }
     user = dbManager.findOne(User, query)
     if user is None:
+        print('User does not exist')
         return False
     
     query['userId'] = query.pop('id')
     account = dbManager.findOne(Account, query)
     if account is None:
+        print('Account does not exist')
+        return False
+    
+    verification = dbManager.findOne(Verification, query)
+    if verification is None:
+        print('Verification does not exist')
+        return False
+    
+    referall = dbManager.findOne(Referral, query)
+    if referall is None:
+        print('Referral does not exist')
         return False
     
     verification = dbManager.findOne(Verification, query)
