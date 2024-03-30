@@ -21,7 +21,8 @@ def getExpenseById(expenseId, userId):
         share_info = {
             "amount": float(share.amount),
             "name": name,
-            "id": str(share.id)
+            "id": str(share.id),
+            "userId": str(share.userId.id)
         }
         shares.append(share_info)
 
