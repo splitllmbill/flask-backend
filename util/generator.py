@@ -1,7 +1,7 @@
 import random
 import string
 
-def inviteCodeGenerate(length: int):
+def codeGenerate(length: int):
     num_digits = 2
     num_letters = length - num_digits
     digits = ''.join(random.choice(string.digits) for _ in range(num_digits))

@@ -10,9 +10,10 @@ from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
 
-from services import expenseService,eventService,shareService, friendService, referralService, userService
+from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService
 from models.common import Account, DatabaseManager,User, Referral, Verification, toJson
 
+from util import generator
 from util.auth import validate_jwt_token
 from util.response import ResponseStatus, flaskResponse
 from util.requestHandler import requestHandler
@@ -107,7 +108,7 @@ def UpdateUser():
             print(type(user_id))
             query={"id":ObjectId(user_id)}
             user = dbManager.findOne(User,query)
-            input["updatedAt"]=datetime.datetime.utcnow
+            input["updatedAt"]=datetime.datetime.now(datetime.UTC)
             dbManager.update(user, **input)
             print("User updated details:", user)
             r = Response(response=toJson(user), status=200, mimetype="application/json")
@@ -143,21 +144,20 @@ def signup():
             new_user = User(**user_data)
             passwordHash = ph.hash(new_user.password)
             new_user.password = passwordHash
-            new_user.createdAt = datetime.datetime.utcnow
-            new_user.updatedAt = datetime.datetime.utcnow
+            new_user.createdAt = datetime.datetime.now(datetime.UTC)
+            new_user.updatedAt = datetime.datetime.now(datetime.UTC)
             new_user.uuid = userService.generate_user_code()
             new_user.save()
 
             referralService.addReferredUser(inviteCode,new_user.id)
-        
             # save account info
             new_account = Account()
-            new_account.createdAt = datetime.datetime.utcnow
-            new_account.updatedAt = datetime.datetime.utcnow
+            new_account.createdAt = datetime.datetime.now(datetime.UTC)
+            new_account.updatedAt = datetime.datetime.now(datetime.UTC)
             new_account.userId = new_user.id
             new_account.save()
             toUpdate = dict()
-            toUpdate['updatedAt'] = datetime.datetime.utcnow
+            toUpdate['updatedAt'] = datetime.datetime.now(datetime.UTC)
             toUpdate['account'] = new_account.id
             dbManager.update(new_user,**toUpdate)
 
@@ -166,16 +166,17 @@ def signup():
             user_referral = Referral()
             user_referral.userId = new_user.id
             user_referral.count = 0
-            user_referral.createdAt = datetime.datetime.utcnow
-            user_referral.updatedAt = datetime.datetime.utcnow
+            user_referral.createdAt = datetime.datetime.now(datetime.UTC)
+            user_referral.updatedAt = datetime.datetime.now(datetime.UTC)
+            user_referral.inviteCode = generator.codeGenerate(6)
             user_referral.save()
 
 
             # save verification info
             user_verification = Verification()
             user_verification.userId = new_user.id
-            user_verification.createdAt = datetime.datetime.utcnow
-            user_verification.updatedAt = datetime.datetime.utcnow
+            user_verification.createdAt = datetime.datetime.now(datetime.UTC)
+            user_verification.updatedAt = datetime.datetime.now(datetime.UTC)
             user_verification.save()
 
             del new_user.createdAt, new_user.updatedAt, new_user.password, new_user.account
@@ -200,7 +201,7 @@ def loginUser():
             user = dbManager.findOne(User,query)
             if user:
                 if ph.verify(user.password, password):
-                    expiration_time = datetime.datetime.utcnow() + datetime.timedelta(minutes=24*60)
+                    expiration_time = datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=24*60)
                     payload = {
                         'user_id': str(user.id),              
                         'email': user.email,
@@ -208,10 +209,14 @@ def loginUser():
                     }
                     token = jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
                     toUpdate = dict()
-                    toUpdate['token'], toUpdate['updatedAt'] = token, datetime.datetime.utcnow
-                    dbManager.update(user,**toUpdate)         
-                    del user.id, user.password, user.createdAt, user.updatedAt, user.account
-                    return flaskResponse(ResponseStatus.SUCCESS, user)
+                    toUpdate['token'], toUpdate['updatedAt'] = token, datetime.datetime.now(datetime.UTC)
+                    dbManager.update(user,**toUpdate)
+                    verified = verificationService.checkEmailVerified(user.id)
+                    return flaskResponse(ResponseStatus.SUCCESS, {
+                        "token": user.token,
+                        "verified": verified,
+                        "id": str(user.id)
+                    })
             else:
                 resp = {'message': 'Authentication Failed. Account does not exist'}
                 return Response(response=json.dumps(resp), status=401, mimetype="application/json")
@@ -240,25 +245,16 @@ def logoutUser(userId, request):
             print('Exception during login',e,type(e))
             return Response(response=json.dumps(resp), status=500, mimetype="application/json")
 
-@db_route.route('/account', methods=['PUT'])
-@requestHandler
-def updateAccount(userId, request):
-    requestData = request.get_json()
-    query = {
-        "id": ObjectId(userId)
-    }
-    user = dbManager.findOne(User, query)
-    dbManager.update(user.account, **requestData)
-    return flaskResponse(ResponseStatus.SUCCESS)
-
-@db_route.route('/useraccount', methods=['PUT'])
+@db_route.route('/user/account', methods=['PUT'])
 @requestHandler
 def updateUserAccount(userId, request):
     requestData = request.get_json()
-    userService.putUserAccount(userId,requestData)
-    return flaskResponse(ResponseStatus.SUCCESS)
+    result = userService.updateUserAccount(userId,requestData)
+    if not result:
+        return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR,'Failed to update account details')
+    return flaskResponse(ResponseStatus.SUCCESS, result)
 
-@db_route.route('/useraccount', methods=['GET'])
+@db_route.route('/user/account', methods=['GET'])
 @requestHandler
 def getAccount(userId, request):
     account = userService.getUserAccount(userId)
@@ -480,3 +476,23 @@ def forgotPassword():
         return jsonify({"error": "Request body is empty"}), 400
     result = userService.forgotPassword(requestData)
     return jsonify(result)
+
+@db_route.route('/verification/generate', methods = ['POST'])
+@requestHandler
+def generateVerification(userId, request):
+    requestData = request.get_json()
+    codeType = requestData['type']
+    result = verificationService.generateVerificationCode(userId,codeType)
+    return result
+
+@db_route.route('/verification/validate', methods = ['POST'])
+@requestHandler
+def verificationValidate(userId, request):
+    requestData = request.get_json()
+    codeType = requestData['type']
+    code = requestData['code']
+    field = requestData['field']
+    result = verificationService.validateCode(userId,code,codeType,field)
+    if not result:
+        return flaskResponse(ResponseStatus.SUCCESS,'Invalid Verification Code')
+    return flaskResponse(ResponseStatus.SUCCESS,result)

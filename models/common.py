@@ -103,7 +103,6 @@ def toJson(obj):
 class User(Document):
     name = StringField(required=True)
     email = StringField(required=True,unique=True)
-    phoneNumber = IntField()
     password = StringField(required=True)
     token = StringField()
     createdAt = DateTimeField()
@@ -115,6 +114,7 @@ class Account(Document):
     userId = ReferenceField('User')
     upiId = StringField()
     upiNumber = IntField()
+    mobile = IntField()
     createdAt = DateTimeField()
     updatedAt = DateTimeField()
 
@@ -132,6 +132,8 @@ class Verification(Document):
     emailCode = StringField()
     mobileVerified = BooleanField(default=False)
     mobileCode = StringField()
+    upiNumberVerified = BooleanField(default=False)
+    upiNumberCode = StringField()
     createdAt = DateTimeField()
     updatedAt = DateTimeField()
     

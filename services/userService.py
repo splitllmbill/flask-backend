@@ -1,9 +1,10 @@
+import datetime
 import secrets
 import string
 import uuid
 from argon2 import PasswordHasher
 from bson import ObjectId
-from models.common import Account, DatabaseManager, User
+from models.common import Account, DatabaseManager, User, Verification, Referral, toJson
 
 dbManager = DatabaseManager()
 dbManager.connect()
@@ -20,50 +21,73 @@ def getUserNameById(user_id):
     return user.name
 
 def getUserAccount(userId):
-    query1 = {
+    query = {
         "id": userId
     }
-    user = dbManager.findOne(User, query1)
-    if user is None or not hasattr(user, 'account'):
+    user = dbManager.findOne(User, query)
+    if user is None:
         return False
     
-    query2 = {
-        "id": ObjectId(user.account.id)
-    }
-    account = dbManager.findOne(Account, query2)
+    query['userId'] = query.pop('id')
+    account = dbManager.findOne(Account, query)
     if account is None:
+        return False
+    
+    verification = dbManager.findOne(Verification, query)
+    if verification is None:
+        return False
+    
+    referall = dbManager.findOne(Referral, query)
+    if referall is None:
         return False
     
     return {
         "uuid": user.uuid,
         "name": user.name,
         "email": user.email,
-        "upiNumber": account.upiNumber if hasattr(account, 'upiNumber') else "",
-        "upiId": account.upiId if hasattr(account, 'upiId') else ""
+        "upiNumber": account.upiNumber if hasattr(account, 'upiNumber') else '',
+        "mobile": account.mobile if hasattr(account, 'mobile') else '',
+        "upiId": account.upiId if hasattr(account, 'upiId') else '',
+        "emailVerified": verification.emailVerified,
+        "upiNumberVerified": verification.upiNumberVerified,
+        "mobileVerified": verification.mobileVerified,
+        "inviteCode": referall.inviteCode,
+        "referralCount": referall.count
     }
 
-def putUserAccount(userId, newData):
-    # Assuming User and Account are classes representing user and account models, respectively
-    user = User.objects.get(id=userId)
-    if user is None or not hasattr(user, 'account'):
+def updateUserAccount(userId, newData):
+    print(userId,newData)
+    query={
+        "id":ObjectId(userId)
+    }
+    user = dbManager.findOne(User,query)
+    if user is None:
         return False
-    
-    account = Account.objects.get(id=user.account.id)
+    query['userId'] = query.pop('id')
+    account = dbManager.findOne(Account,query)    
     if account is None:
         return False
     
-    # Update account fields with new data
     if 'name' in newData:
         user.name = newData['name']
-    if 'upiNumber' in newData:
-        account.upiNumber = newData['upiNumber']
+        user.updatedAt = datetime.datetime.now(datetime.UTC)
+        user.save()
+
     if 'upiId' in newData:
         account.upiId = newData['upiId']
-    
-    # Save updated user and account objects
-    user.save()
-    account.save()
-    
+        account.updatedAt = datetime.datetime.now(datetime.UTC)
+        account.save()
+
+    if 'upiNumber' in newData:
+        account.upiNumber = newData['upiNumber']
+        account.updatedAt = datetime.datetime.now(datetime.UTC)
+        account.save()
+
+    if 'mobile' in newData:
+        account.mobile = newData['mobile']
+        account.updatedAt = datetime.datetime.now(datetime.UTC)
+        account.save()
+        
     return True
 
 def generate_user_code():

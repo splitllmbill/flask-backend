@@ -18,7 +18,7 @@ defaultResponse = {}
 
 def flaskResponse(status, response = None):
     if status == ResponseStatus.SUCCESS:
-        if response is None:
+        if response is None or response == True:
             defaultResponse['message'] = 'Success'
             response = defaultResponse
         if response == False:
