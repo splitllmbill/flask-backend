@@ -27,6 +27,7 @@ def getExpenseById(expenseId, userId):
         shares.append(share_info)
 
     # Constructing the expense object
+    
     result = {
         "expenseName": expense.expenseName,
         "amount": float(expense.amount),
@@ -40,7 +41,8 @@ def getExpenseById(expenseId, userId):
         "updatedBy": "you" if str(expense.updatedBy.id) == userId else dbManager.findOne(User, {"id": expense.updatedBy.id}).name,
         "category": expense.category,
         "date": str(expense.date),
-        "id": str(expense.id)
+        "id": str(expense.id),
+        "eventId": str(expense.eventId.id) if expense and hasattr(expense, 'eventId') and hasattr(expense.eventId, 'id') else ""
     }
     return result
 
