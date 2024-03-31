@@ -18,7 +18,6 @@ ocr_model_name = os.getenv("OCR_MODEL")
 text_model = [name for name in models if name.endswith(text_model_name)]
 ocr_model = [name for name in models if name.endswith(ocr_model_name)]
 
-
 # Function to check if the folder for uploads exists, and create it if not
 def create_upload_folder():
     if not os.path.exists(folder_path):
@@ -75,7 +74,7 @@ def upload_file():
         response.resolve()
         result = response.text.replace('`','').replace('json','').strip()
         res = json.loads(result)
-    except Exception as e:
+    except Exception:
         traceback.print_exc()
         return jsonify({'message': 'Exception while calling Gemini API', 'llmoutput': {}})
     return jsonify({'message': 'File uploaded successfully', 'filename': unique_filename, 'ocroutput': res})
@@ -91,18 +90,14 @@ def convert_expense():
     model = LLM.GenerativeModel(text_model[0])
     response = model.generate_content(prompt)
     response.resolve()
-    jsonResponse = response.text[8:-4]
+    result = response.text.replace('`','').replace('json','').strip()
     try:
-        jsonResponse = json.loads(jsonResponse)
-    except json.JSONDecodeError as E:
-        print(E)
-        print(response.text)
-        jsonResponse = None
-    if jsonResponse is None:
+        jsonResponse = json.loads(result)
+    except Exception:
+        traceback.print_exc()
         return jsonify({'message': 'Exception while calling Gemini API', 'llmoutput': {}})
     return jsonify({'message': 'Expense Processed Successfully', 'llmoutput': jsonResponse})
         
-
 @llm_route.route('/home', methods=['GET'])
 def home():
     return 'Welcome to home'

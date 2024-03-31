@@ -8,7 +8,7 @@ dbManager = DatabaseManager()
 dbManager.connect()
 
 def generateInviteCode(user_id):
-    inviteCode = generator.inviteCodeGenerate(6)
+    inviteCode = generator.codeGenerate(6)
     query={"userId":ObjectId(user_id)}
     updateVal = {
         "inviteCode": inviteCode
