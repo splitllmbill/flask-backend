@@ -27,7 +27,6 @@ def getUserByInviteCode(inviteCode):
     return True
 
 def addReferredUser(inviteCode, newUser_id):
-    print(inviteCode,newUser_id)
     query = {
         "inviteCode": inviteCode
     }

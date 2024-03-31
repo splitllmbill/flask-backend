@@ -12,21 +12,15 @@ CORS(app)
 # Load environment variables
 load_dotenv()
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
-app.config['DEBUG'] = os.getenv('DEBUG')
 app.config['DB_URL'] = os.getenv('DB_URL')
 app.config['DB_NAME'] = os.getenv('DB_NAME')
 app.config['UPLOADS_PATH'] = Path(os.getenv('UPLOADS_PATH'))
 app.config['LLM_API_KEY'] = os.getenv('LLM_API_KEY')
-app.config['ENV'] = os.getenv('ENV')
-
-if app.config['ENV'] == 'local':
-    host = None
-else:
-    host = '0.0.0.0'
+app.config['ADMIN_CODE'] = os.getenv('ADMIN_CODE')
 
 # Configure Routes
 app.register_blueprint(db_route, url_prefix='/db')
 app.register_blueprint(llm_route, url_prefix='/llm')
 
 if __name__ == '__main__':
-    app.run(port=8081,debug=app.config['DEBUG'],host=host)
+    app.run(port=8081,host = '0.0.0.0')
