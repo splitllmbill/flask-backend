@@ -201,7 +201,7 @@ def loginUser():
             user = dbManager.findOne(User,query)
             if user:
                 if ph.verify(user.password, password):
-                    expiration_time = datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=24*60)
+                    expiration_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=24*60)
                     payload = {
                         'user_id': str(user.id),              
                         'email': user.email,
@@ -209,7 +209,7 @@ def loginUser():
                     }
                     token = jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
                     toUpdate = dict()
-                    toUpdate['token'], toUpdate['updatedAt'] = token, datetime.datetime.now(datetime.UTC)
+                    toUpdate['token'], toUpdate['updatedAt'] = token, datetime.datetime.now(datetime.timezone.utc)
                     dbManager.update(user,**toUpdate)
                     verified = verificationService.checkEmailVerified(user.id)
                     return flaskResponse(ResponseStatus.SUCCESS, {
