@@ -81,22 +81,22 @@ def updateUserAccount(userId, newData):
     
     if 'name' in newData:
         user.name = newData['name']
-        user.updatedAt = datetime.datetime.now(datetime.UTC)
+        user.updatedAt = datetime.datetime.now(datetime.timezone.utc)
         user.save()
 
     if 'upiId' in newData:
         account.upiId = newData['upiId']
-        account.updatedAt = datetime.datetime.now(datetime.UTC)
+        account.updatedAt = datetime.datetime.now(datetime.timezone.utc)
         account.save()
 
     if 'upiNumber' in newData:
         account.upiNumber = newData['upiNumber']
-        account.updatedAt = datetime.datetime.now(datetime.UTC)
+        account.updatedAt = datetime.datetime.now(datetime.timezone.utc)
         account.save()
 
     if 'mobile' in newData:
         account.mobile = newData['mobile']
-        account.updatedAt = datetime.datetime.now(datetime.UTC)
+        account.updatedAt = datetime.datetime.now(datetime.timezone.utc)
         account.save()
         
     return True

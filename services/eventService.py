@@ -1,6 +1,6 @@
 import numpy
 from models.common import DatabaseManager,Event, User, toJson
-from datetime import datetime as dt
+from datetime import datetime as dt,timezone
 from resources.common import CreditorDetail,EventDue,EventDueSummary
 from bson import ObjectId
 from services import expenseService,eventService,shareService,userService, friendService
