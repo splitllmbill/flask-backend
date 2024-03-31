@@ -26,11 +26,23 @@ def getUserAccount(userId):
     }
     user = dbManager.findOne(User, query)
     if user is None:
+        print('User does not exist')
         return False
     
     query['userId'] = query.pop('id')
     account = dbManager.findOne(Account, query)
     if account is None:
+        print('Account does not exist')
+        return False
+    
+    verification = dbManager.findOne(Verification, query)
+    if verification is None:
+        print('Verification does not exist')
+        return False
+    
+    referall = dbManager.findOne(Referral, query)
+    if referall is None:
+        print('Referral does not exist')
         return False
     
     verification = dbManager.findOne(Verification, query)
@@ -69,22 +81,22 @@ def updateUserAccount(userId, newData):
     
     if 'name' in newData:
         user.name = newData['name']
-        user.updatedAt = datetime.datetime.now(datetime.UTC)
+        user.updatedAt = datetime.datetime.now(datetime.timezone.utc)
         user.save()
 
     if 'upiId' in newData:
         account.upiId = newData['upiId']
-        account.updatedAt = datetime.datetime.now(datetime.UTC)
+        account.updatedAt = datetime.datetime.now(datetime.timezone.utc)
         account.save()
 
     if 'upiNumber' in newData:
         account.upiNumber = newData['upiNumber']
-        account.updatedAt = datetime.datetime.now(datetime.UTC)
+        account.updatedAt = datetime.datetime.now(datetime.timezone.utc)
         account.save()
 
     if 'mobile' in newData:
         account.mobile = newData['mobile']
-        account.updatedAt = datetime.datetime.now(datetime.UTC)
+        account.updatedAt = datetime.datetime.now(datetime.timezone.utc)
         account.save()
         
     return True

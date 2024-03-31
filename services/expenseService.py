@@ -72,7 +72,7 @@ def createExpense(userId, requestData):
     new_expense.category = requestData["category"]
     new_expense.date = requestData["date"]
 
-    if requestData['type'] in ['group','settle'] and requestData["eventId"]:
+    if requestData['type'] in ['group','settle'] and ("eventId" in requestData) and requestData["eventId"]!="":
         event = dbManager.findOne(Event, {"id": ObjectId(requestData["eventId"])})
         if event:
             new_expense.eventId = ObjectId(requestData["eventId"])

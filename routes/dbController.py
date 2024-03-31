@@ -1,7 +1,7 @@
 import datetime
 import json
 from bson import ObjectId
-from flask import Blueprint, jsonify, request, Response, current_app
+from flask import Blueprint, jsonify, request, Response, current_app, send_file
 from werkzeug.exceptions import BadRequest
 from util.response import ResponseStatus, flaskResponse
 from mongoengine.queryset.visitor import Q
@@ -10,7 +10,7 @@ from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
 
-from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService
+from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService, upiService
 from models.common import Account, DatabaseManager,User, Referral, Verification, toJson
 
 from util import generator
@@ -108,7 +108,7 @@ def UpdateUser():
             print(type(user_id))
             query={"id":ObjectId(user_id)}
             user = dbManager.findOne(User,query)
-            input["updatedAt"]=datetime.datetime.now(datetime.UTC)
+            input["updatedAt"]=datetime.datetime.now(datetime.timezone.utc)
             dbManager.update(user, **input)
             print("User updated details:", user)
             r = Response(response=toJson(user), status=200, mimetype="application/json")
@@ -144,20 +144,20 @@ def signup():
             new_user = User(**user_data)
             passwordHash = ph.hash(new_user.password)
             new_user.password = passwordHash
-            new_user.createdAt = datetime.datetime.now(datetime.UTC)
-            new_user.updatedAt = datetime.datetime.now(datetime.UTC)
+            new_user.createdAt = datetime.datetime.now(datetime.timezone.utc)
+            new_user.updatedAt = datetime.datetime.now(datetime.timezone.utc)
             new_user.uuid = userService.generate_user_code()
             new_user.save()
 
             referralService.addReferredUser(inviteCode,new_user.id)
             # save account info
             new_account = Account()
-            new_account.createdAt = datetime.datetime.now(datetime.UTC)
-            new_account.updatedAt = datetime.datetime.now(datetime.UTC)
+            new_account.createdAt = datetime.datetime.now(datetime.timezone.utc)
+            new_account.updatedAt = datetime.datetime.now(datetime.timezone.utc)
             new_account.userId = new_user.id
             new_account.save()
             toUpdate = dict()
-            toUpdate['updatedAt'] = datetime.datetime.now(datetime.UTC)
+            toUpdate['updatedAt'] = datetime.datetime.now(datetime.timezone.utc)
             toUpdate['account'] = new_account.id
             dbManager.update(new_user,**toUpdate)
 
@@ -166,8 +166,8 @@ def signup():
             user_referral = Referral()
             user_referral.userId = new_user.id
             user_referral.count = 0
-            user_referral.createdAt = datetime.datetime.now(datetime.UTC)
-            user_referral.updatedAt = datetime.datetime.now(datetime.UTC)
+            user_referral.createdAt = datetime.datetime.now(datetime.timezone.utc)
+            user_referral.updatedAt = datetime.datetime.now(datetime.timezone.utc)
             user_referral.inviteCode = generator.codeGenerate(6)
             user_referral.save()
 
@@ -175,8 +175,8 @@ def signup():
             # save verification info
             user_verification = Verification()
             user_verification.userId = new_user.id
-            user_verification.createdAt = datetime.datetime.now(datetime.UTC)
-            user_verification.updatedAt = datetime.datetime.now(datetime.UTC)
+            user_verification.createdAt = datetime.datetime.now(datetime.timezone.utc)
+            user_verification.updatedAt = datetime.datetime.now(datetime.timezone.utc)
             user_verification.save()
 
             del new_user.createdAt, new_user.updatedAt, new_user.password, new_user.account
@@ -201,7 +201,7 @@ def loginUser():
             user = dbManager.findOne(User,query)
             if user:
                 if ph.verify(user.password, password):
-                    expiration_time = datetime.datetime.now(datetime.UTC) + datetime.timedelta(minutes=24*60)
+                    expiration_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=24*60)
                     payload = {
                         'user_id': str(user.id),              
                         'email': user.email,
@@ -209,7 +209,7 @@ def loginUser():
                     }
                     token = jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm='HS256')
                     toUpdate = dict()
-                    toUpdate['token'], toUpdate['updatedAt'] = token, datetime.datetime.now(datetime.UTC)
+                    toUpdate['token'], toUpdate['updatedAt'] = token, datetime.datetime.now(datetime.timezone.utc)
                     dbManager.update(user,**toUpdate)
                     verified = verificationService.checkEmailVerified(user.id)
                     return flaskResponse(ResponseStatus.SUCCESS, {
@@ -435,6 +435,12 @@ def getFriendExpenses(user_id, request, friend_id):
     result = friendService.getFriendDetails(user_id,friend_id)
     return flaskResponse(ResponseStatus.SUCCESS,result)
 
+@db_route.route('/user/expense/friend/<friend_id>/settleup', methods=['POST'])
+@requestHandler
+def settleUpFriendDues(user_id, request, friend_id):
+    result = friendService.settleUpFriendDues(user_id,friend_id)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
+
 @db_route.route('/<type>/<id>/users', methods=['GET'])
 @requestHandler
 def getEventUsers(user_id, request, type, id):
@@ -496,3 +502,32 @@ def verificationValidate(userId, request):
     if not result:
         return flaskResponse(ResponseStatus.SUCCESS,'Invalid Verification Code')
     return flaskResponse(ResponseStatus.SUCCESS,result)
+
+@db_route.route('/upi/link', methods = ['POST'])
+@requestHandler
+def generateUPILink(userId, request):
+    requestData = request.get_json()
+    dest_userId = requestData['destination']
+    amount = requestData['amount']
+    note = requestData['note']
+    result = upiService.generateUPILink(dest_userId, amount, note)
+    if not result:
+        return flaskResponse(ResponseStatus.SUCCESS,False)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
+
+@db_route.route('/upi/image', methods = ['POST'])
+@requestHandler
+def generateUPIQR(userId, request):
+    requestData = request.get_json()
+    dest_userId = requestData['destination']
+    amount = requestData['amount']
+    note = requestData['note']
+    result = upiService.generateUPIQR(dest_userId, amount, note)
+    if not result:
+        return flaskResponse(ResponseStatus.SUCCESS,False)
+    return send_file(
+        result,
+        mimetype='image/png',
+        as_attachment=True,
+        download_name='qr_code.png'
+    )
