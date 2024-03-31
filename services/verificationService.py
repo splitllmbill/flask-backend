@@ -19,7 +19,7 @@ def generateVerificationCode(user_id,codeType):
     code = generator.codeGenerate(4)
     query={"userId":ObjectId(user_id)}
     updateVal = {
-        "updatedAt": datetime.datetime.now(datetime.UTC)
+        "updatedAt": datetime.datetime.now(datetime.timezone.utc)
     }
     updateVal[codeMap[codeType][0]] = code
     # updateVal[codeMap[codeType][1]] = False
@@ -34,7 +34,7 @@ def validateCode(user_id, code, codeType, field):
         if code == user_verification['mobileCode']:
             updateVal = {
                 "mobileVerified": True,
-                "updatedAt": datetime.datetime.now(datetime.UTC)
+                "updatedAt": datetime.datetime.now(datetime.timezone.utc)
             }
             dbManager.update(user_verification, **updateVal)
             userService.updateUserAccount(user_id, {
@@ -46,7 +46,7 @@ def validateCode(user_id, code, codeType, field):
         if code == user_verification['emailCode']:
             updateVal = {
                 "emailVerified": True,
-                "updatedAt": datetime.datetime.now(datetime.UTC)
+                "updatedAt": datetime.datetime.now(datetime.timezone.utc)
             }
             dbManager.update(user_verification, **updateVal)
         else:
@@ -55,7 +55,7 @@ def validateCode(user_id, code, codeType, field):
         if code == user_verification['upiNumberCode']:
             updateVal = {
                 "upiNumberVerified": True,
-                "updatedAt": datetime.datetime.now(datetime.UTC)
+                "updatedAt": datetime.datetime.now(datetime.timezone.utc)
             }
             dbManager.update(user_verification, **updateVal)
             userService.updateUserAccount(user_id, {

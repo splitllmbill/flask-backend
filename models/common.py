@@ -27,8 +27,10 @@ class DatabaseManager:
         document = model(**kwargs)
         document.save()
 
-    def findAll(self, model, query={}):
-        return model.objects(**query)
+    def findAll(self, model, query={}, sort_field="createdAt", sort_order="-"):
+        if sort_field not in model._fields:
+            return model.objects(**query)
+        return model.objects(**query).order_by(sort_order + sort_field)
 
     def findOne(self, model, query={}):
         return model.objects(**query).first()
