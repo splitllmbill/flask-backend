@@ -134,10 +134,11 @@ def signup():
         try:
             user_data = request.get_json()
             inviteCode = user_data['inviteCode']
-            referred_user = referralService.getUserByInviteCode(inviteCode)
-            if not referred_user:
-                resp = {'message': 'Invalid Invite Code. Please try again'}
-                return Response(response=json.dumps(resp), status=400, mimetype="application/json")
+            if inviteCode != current_app.config['ADMIN_CODE']: 
+                referred_user = referralService.getUserByInviteCode(inviteCode)
+                if not referred_user:
+                    resp = {'message': 'Invalid Invite Code. Please try again'}
+                    return Response(response=json.dumps(resp), status=400, mimetype="application/json")
             del user_data['inviteCode']
             
             # save user info
@@ -149,7 +150,8 @@ def signup():
             new_user.uuid = userService.generate_user_code()
             new_user.save()
 
-            referralService.addReferredUser(inviteCode,new_user.id)
+            if inviteCode != current_app.config['ADMIN_CODE']: 
+                referralService.addReferredUser(inviteCode,new_user.id)
             # save account info
             new_account = Account()
             new_account.createdAt = datetime.datetime.now(datetime.timezone.utc)
