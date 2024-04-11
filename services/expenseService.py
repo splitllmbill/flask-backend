@@ -2,7 +2,6 @@ from models.common import DatabaseManager,Expense,Event, Friends, Share, User, t
 from datetime import datetime as dt
 from bson import ObjectId
 from services import expenseService, eventService, shareService, friendService
-from datetime import datetime, timedelta
 
 from constants import constants
 
@@ -205,67 +204,4 @@ def getAllExpensesForUser(user_id,request_data):
         return all_expenses
     except Exception as e:
         print(f"Error in getAllExpensesForUser function: {e}")
-        raise e
-
-def calculate_date_threshold(date_option):
-    if date_option:
-        today = datetime.utcnow().date()
-        if date_option == 30:
-            date_threshold = today - timedelta(days=30)
-        elif date_option == 60:
-            date_threshold = today - timedelta(days=60)
-        elif date_option == 90:
-            date_threshold = today - timedelta(days=90)
-        elif date_option == 180:
-            date_threshold = today - timedelta(days=180)
-        elif date_option == 360:
-            date_threshold = today - timedelta(days=360)
-        else:
-            date_threshold = None
-    else:
-        date_threshold = None
-    return date_threshold
-
-
-
-def getSummaryForHomepage(userId, requestData):
-    try:
-        total_share = 0
-        total_owe_amount = 0
-        total_owed_amount = 0
-        date_option = requestData["dateSelected"]
-        date_threshold = calculate_date_threshold(date_option)   
-
-        query = {"type__in": ["normal"]}
-        if date_threshold:
-            query["date__gte"] = date_threshold
-        
-        personal_expenses = dbManager.findAll(Expense, query)
-        personal_expenses_sum = 0
-        for expense in personal_expenses:
-            personal_expenses_sum += expense.amount
-
-        query = {"type__in": ["group", "friend", "settle"]}
-        if date_threshold:
-            query["date__gte"] = date_threshold
-
-        expenses = dbManager.findAll(Expense, query)
-        
-        for expense in expenses:
-            for share in expense.shares:
-                if str(share.userId.id) == userId:
-                    total_share += float(share.amount)
-                    if expense.paidBy.id == userId:
-                        total_owe_amount += share.amount
-                    else:
-                        total_owed_amount += share.amount  
-        
-        return {
-            'group_expenses': float(total_share),
-            'personal_expenses': float(personal_expenses_sum),
-            'total_you_owe': float(total_owe_amount),
-            'total_owed_to_you': float(total_owed_amount),
-        }
-    except Exception as e:
-        print(f"Error in getSummary function: {e}")
         raise e

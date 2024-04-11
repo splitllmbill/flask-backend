@@ -10,7 +10,7 @@ from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
 
-from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService, upiService,commonService
+from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService, upiService, dashboardService, commonService
 from models.common import Account, DatabaseManager,User, Referral, Verification, toJson
 
 from util import generator
@@ -200,7 +200,7 @@ def loginUser():
             user = dbManager.findOne(User,query)
             if user:
                 if ph.verify(user.password, password):
-                    expiration_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
+                    expiration_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=10000)
                     payload = {
                         'user_id': str(user.id),              
                         'email': user.email,
@@ -532,10 +532,19 @@ def generateUPIQR(userId, request):
         download_name='qr_code.png'
     )
 
-@db_route.route('/summary', methods=['POST'])
+@db_route.route('/dashboard/summary', methods=['POST'])
 @requestHandler
-def getExpensesSummary(userId, request):
-    result = expenseService.getSummaryForHomepage(userId,request.get_json())
+def getDashboardSummary(userId, request):
+    result = dashboardService.getSummaryForHomepage(userId,request.get_json())
+    if(result):
+        return flaskResponse(ResponseStatus.SUCCESS,result)
+    else: 
+        return flaskResponse(ResponseStatus.SUCCESS,False)
+    
+@db_route.route('/dashboard/chart', methods=['POST'])
+@requestHandler
+def getDashboardChart(userId, request):
+    result = dashboardService.getDashboardChart(userId,request.get_json())
     if(result):
         return flaskResponse(ResponseStatus.SUCCESS,result)
     else: 
