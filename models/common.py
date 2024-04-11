@@ -46,7 +46,8 @@ class DatabaseManager:
             setattr(document, key, value)
         document.save()
 
-    
+    def aggregate(self, model, pipeline):
+        return model.objects.aggregate(*pipeline)
 
     def delete(self, document):
         if document:
