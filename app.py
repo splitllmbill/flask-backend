@@ -23,4 +23,4 @@ app.register_blueprint(db_route, url_prefix='/db')
 app.register_blueprint(llm_route, url_prefix='/llm')
 
 if __name__ == '__main__':
-    app.run(port=8081,host = '0.0.0.0')
+    app.run(port=8081,host = '0.0.0.0',debug=True)

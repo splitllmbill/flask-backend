@@ -78,7 +78,6 @@ def getUserByEmailId(email_id):
     if request.method == 'GET':
         try:  
             # validate_jwt_token(request)
-            print(email_id)
             query={"email":email_id}
             user = dbManager.findOne(User,query)
             r=flaskResponse(ResponseStatus.SUCCESS,user)
@@ -105,12 +104,10 @@ def UpdateUser():
             validate_jwt_token(request)      
             input = json.loads(request.data)  
             user_id=input["id"] 
-            print(type(user_id))
             query={"id":ObjectId(user_id)}
             user = dbManager.findOne(User,query)
             input["updatedAt"]=datetime.datetime.now(datetime.timezone.utc)
             dbManager.update(user, **input)
-            print("User updated details:", user)
             r = Response(response=toJson(user), status=200, mimetype="application/json")
         except jwt.PyJWTError as e:
             print(e)
@@ -287,7 +284,6 @@ def getAllExpensesForUser(userId, request):
 @db_route.route('/expense', methods = ['POST'])
 @requestHandler
 def createExpense(userId, request):
-    print(request)
     requestData = request.get_json()
     expense = expenseService.createExpense(userId,requestData)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
@@ -335,8 +331,7 @@ def getEventDues(event_id):
     if request.method == 'GET':
         try:   
             session_user_id = validate_jwt_token(request)
-            result=eventService.getEventDues(event_id)
-            print(result)
+            result=eventService.getEventDues(event_id) 
             r= flaskResponse(ResponseStatus.SUCCESS,result.__dict__)
         except jwt.PyJWTError as e:
             print(e)
@@ -537,7 +532,7 @@ def generateUPIQR(userId, request):
 @db_route.route('/summary', methods=['POST'])
 @requestHandler
 def getExpensesSummary(userId, request):
-    result = expenseService.getSummaryForHomepage(userId)
+    result = expenseService.getSummaryForHomepage(userId,request.get_json())
     if(result):
         return flaskResponse(ResponseStatus.SUCCESS,result)
     else: 
