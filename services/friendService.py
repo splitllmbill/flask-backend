@@ -1,20 +1,29 @@
-import datetime
-import string
 from bson import ObjectId
 from models.common import DatabaseManager, Event, Expense, Friends, Share, User
-from mongoengine import Q
-from services import friendService,expenseService
+from services import expenseService
 from datetime import datetime as dt
 
 dbManager = DatabaseManager()
 dbManager.connect()
 
-db_manager = DatabaseManager()
-db_manager.connect()
-
 def getFriendDetails(user_id, friend_id):
     friend = dbManager.findOne(User,{"id":friend_id})
     user = dbManager.findOne(User,{"id":user_id})
+    pipeline = [
+        {
+            "$match": {
+                "userId": ObjectId(user_id),
+                "friends": {
+                    "$elemMatch": {
+                        "$eq": ObjectId(friend_id)
+                    }
+                }
+            }
+        }
+    ]
+    isFriend = list(dbManager.aggregate(Friends,pipeline))
+    if len(isFriend) == 0:
+        return None
 
     if friend and user:
         expenses =dbManager.findAll(Expense,{"paidBy__in":[friend,user] ,"type__in":["group","friend","settle"]})
