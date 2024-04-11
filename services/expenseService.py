@@ -183,18 +183,50 @@ def getEventExpensesAlongWithUserSummary(userId, eventId):
 
 def getAllExpensesForUser(user_id):
     try:
-        print(user_id)
         user_object_id = ObjectId(user_id)
-        print(user_object_id)
         query = {
             "paidBy": user_object_id,
             "type": "normal"
         }
-        print(query)
         all_expenses = dbManager.findAll(Expense, query)
-        print(all_expenses)
         return all_expenses
     except Exception as e:
         print(f"Error in getAllExpensesForUser function: {e}")
         raise e
 
+def calculate_group_expenses(userId):
+    total_share = 0
+    total_owe_amount = 0
+    total_owed_amount = 0
+    expenses = dbManager.findAll(Expense, {"type": {"$in": ["friend", "group"]}})
+    
+    for expense in expenses:
+        for share in expense.shares:
+            if str(share.userId) == userId:
+                total_share += float(share.amount)
+                if expense.paidBy == userId:
+                    total_owe_amount+=share.amount 
+                else:
+                    total_owed_amount+=share.amount  
+    
+    return { "total_share" : total_share, "total_owe_amount": total_owe_amount, "total_owed_amount":total_owed_amount }     
+
+
+def getSummaryForHomepage(userId):
+    try:
+        personal_expenses = getAllExpensesForUser(userId)
+        personal_expenses_sum = 0
+        for expense in personal_expenses:
+            personal_expenses_sum += expense.amount
+
+        group_expenses_summary = calculate_group_expenses(userId)        
+
+        return {
+            'group_expenses': group_expenses_summary["total_share"],
+            'personal_expenses': personal_expenses_sum,
+            'total_you_owe': group_expenses_summary["total_owe_amount"],
+            'total_owed_to_you': group_expenses_summary["total_owed_amount"],
+        }
+    except Exception as e:
+        print(f"Error in getSummary function: {e}")
+        raise e

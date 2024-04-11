@@ -533,3 +533,12 @@ def generateUPIQR(userId, request):
         as_attachment=True,
         download_name='qr_code.png'
     )
+
+@db_route.route('/summary', methods=['POST'])
+@requestHandler
+def getExpensesSummary(userId, request):
+    result = expenseService.getSummaryForHomepage(userId)
+    if(result):
+        return flaskResponse(ResponseStatus.SUCCESS,result)
+    else: 
+        return flaskResponse(ResponseStatus.SUCCESS,False)
