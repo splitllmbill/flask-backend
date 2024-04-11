@@ -115,7 +115,6 @@ def getEventDuesForUser(event_id, user_id):
         event_dues_summary = getEventDues(event_id)
         user_name = userService.getUserNameById(user_id)
         result["userName"]=user_name
-        print(event_dues_summary, "summary")
 
         # Assuming event_dues_summary is a single object, not iterable
         # Adjust this part based on the structure of event_dues_summary
