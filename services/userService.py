@@ -1,10 +1,9 @@
 import datetime
 import secrets
 import string
-import uuid
 from argon2 import PasswordHasher
 from bson import ObjectId
-from models.common import Account, DatabaseManager, User, Verification, Referral, toJson
+from models.common import Account, DatabaseManager, User, Verification, Referral
 
 dbManager = DatabaseManager()
 dbManager.connect()
@@ -101,10 +100,6 @@ def updateUserAccount(userId, newData):
         
     return True
 
-def generate_user_code():
-    # Generate a UUID (Version 4) as a unique user code
-    return str(uuid.uuid4())
-
 def changePassword(userId, requestData):
     user = User.objects.get(id=userId)
     if user is None:
@@ -128,9 +123,22 @@ def forgotPassword(requestData):
         "new_password": new_password
     }
 
-
 def generate_random_password(length=12):
     alphabet = string.ascii_letters + string.digits
     password = ''.join(secrets.choice(alphabet) for _ in range(length))
     return password
-    
+
+def bulkUpdate():
+    users = dbManager.findAll(User)
+    for i in users:
+        # if i.email == 'sivaganesh@gmail.com' or i.email == 'sb@gmail.com':
+        #     # i.uuid = generator.codeGenerate(6)
+        #     # print('new uuid',i.uuid)
+        #     print(i.email)
+        #     # i.save()
+        # else:
+        #     i.uuid = generator.codeGenerate(6)
+        #     print('new uuid',i.uuid)
+        #     print(i.email)
+        #     i.save()
+        print()

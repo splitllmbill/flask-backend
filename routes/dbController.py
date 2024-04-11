@@ -147,7 +147,7 @@ def signup():
             new_user.password = passwordHash
             new_user.createdAt = datetime.datetime.now(datetime.timezone.utc)
             new_user.updatedAt = datetime.datetime.now(datetime.timezone.utc)
-            new_user.uuid = userService.generate_user_code()
+            new_user.uuid = generator.codeGenerate(6)
             new_user.save()
 
             if inviteCode != current_app.config['ADMIN_CODE']: 
@@ -203,7 +203,7 @@ def loginUser():
             user = dbManager.findOne(User,query)
             if user:
                 if ph.verify(user.password, password):
-                    expiration_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=24*60)
+                    expiration_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
                     payload = {
                         'user_id': str(user.id),              
                         'email': user.email,
@@ -435,7 +435,9 @@ def get_user_friends(user_id, request):
 @requestHandler
 def getFriendExpenses(user_id, request, friend_id):
     result = friendService.getFriendDetails(user_id,friend_id)
-    return flaskResponse(ResponseStatus.SUCCESS,result)
+    if result:
+        return flaskResponse(ResponseStatus.SUCCESS,result)
+    return flaskResponse(ResponseStatus.BAD_REQUEST)
 
 @db_route.route('/user/expense/friend/<friend_id>/settleup', methods=['POST'])
 @requestHandler
@@ -533,3 +535,8 @@ def generateUPIQR(userId, request):
         as_attachment=True,
         download_name='qr_code.png'
     )
+
+@db_route.route('/bulk', methods = ['POST'])
+def bulkUpdate():
+    userService.bulkUpdate()
+    return "Success"
