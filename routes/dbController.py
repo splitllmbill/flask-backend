@@ -10,7 +10,7 @@ from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
 
-from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService, upiService
+from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService, upiService,commonService
 from models.common import Account, DatabaseManager,User, Referral, Verification, toJson
 
 from util import generator
@@ -271,11 +271,12 @@ def getNonGroupExpenses(userId, request):
     expense = friendService.getNonGroupExpenses(userId)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
 
-@db_route.route('/expenses/personal', methods=['GET'])
+@db_route.route('/expenses/personal', methods=['POST'])
 @requestHandler
 def getAllExpensesForUser(userId, request):
     try:
-        expenses = expenseService.getAllExpensesForUser(userId)
+        requestData = request.get_json()
+        expenses = expenseService.getAllExpensesForUser(userId,requestData)
         return flaskResponse(ResponseStatus.SUCCESS, [toJson(expense) for expense in expenses])
     except Exception as e:
         print(f"Error in getAllExpensesForUser route: {e}")
@@ -544,3 +545,11 @@ def getExpensesSummary(userId, request):
 def bulkUpdate():
     userService.bulkUpdate()
     return "Success"
+
+@db_route.route('/filter-options', methods = ['POST'])
+@requestHandler
+def filterOptions(userId, request):
+    print(request)
+    requestData = request.get_json()
+    expense = commonService.getFilterOptions(requestData)
+    return flaskResponse(ResponseStatus.SUCCESS, expense)

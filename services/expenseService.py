@@ -4,6 +4,7 @@ from bson import ObjectId
 from services import expenseService, eventService, shareService, friendService
 from datetime import datetime, timedelta
 
+from constants import constants
 
 dbManager = DatabaseManager()
 dbManager.connect()
@@ -183,13 +184,23 @@ def getEventExpensesAlongWithUserSummary(userId, eventId):
     return result
         
 
-def getAllExpensesForUser(user_id):
+def getAllExpensesForUser(user_id,request_data):
     try:
         user_object_id = ObjectId(user_id)
+        filters =request_data["filters"]
         query = {
             "paidBy": user_object_id,
             "type": "normal"
         }
+        for filter in filters:
+            print("filter",filter)
+            if filter["operator"]=='IN':
+                query[filter["field"]+constants.operatorMap[filter["operator"]]] =filter["values"]
+            elif filter["operator"]=='BTW':
+                query[filter["field"]+'__gte'] =float(filter["values"][0])
+                query[filter["field"]+'__lte'] =float(filter["values"][1])
+        
+        print(query)
         all_expenses = dbManager.findAll(Expense, query)
         return all_expenses
     except Exception as e:
