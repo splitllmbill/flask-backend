@@ -5,22 +5,35 @@ import datetime
 dbManager = DatabaseManager()
 dbManager.connect()
 
+def getDateTime(requestData):
+    start = requestData['startDate']
+    end = requestData['endDate']
+    if start:
+        start_dt = datetime.datetime.strptime(start, "%a %b %d %Y")
+    else:
+        start_dt = datetime.datetime.min
+    if end:
+        end_dt = datetime.datetime.strptime(end, "%a %b %d %Y")
+        end_dt = end_dt.replace(hour=23, minute=59, second=59)
+    else:
+        end_dt = datetime.datetime.max
+    return [start_dt,end_dt]
+
+
 def getSummaryForHomepage(userId, requestData):
     total_share = 0
     total_owe_amount = 0
     total_owed_amount = 0
-    date_option = requestData["dateSelected"]
-    if date_option:
-        date_selected = datetime.datetime.strptime(date_option, "%a %b %d %Y")
-    else:
-        date_selected = datetime.datetime.min
-
+    dateRange = getDateTime(requestData)
     personal_expenses_pipeline = [
         {
             "$match": {
                 "type": "normal",
                 "paidBy": ObjectId(userId),
-                "date": { "$gte": date_selected }
+                "date": { 
+                    "$gte": dateRange[0],
+                    "$lte": dateRange[1]
+                }
             }
         },
         {
@@ -30,8 +43,11 @@ def getSummaryForHomepage(userId, requestData):
             }
         }
     ]
-    result = list(dbManager.aggregate(Expense,personal_expenses_pipeline))[0]
-    personal_expenses = float(result['totalAmount'])
+    result = list(dbManager.aggregate(Expense,personal_expenses_pipeline))
+    if len(result) != 0:
+        personal_expenses = float(result[0]['totalAmount'])
+    else:
+        personal_expenses = float(0)
 
     other_expenses_pipeline = [
         {
@@ -47,12 +63,18 @@ def getSummaryForHomepage(userId, requestData):
                 "$or": [
                     {
                         "type": {"$in": ["group", "friend", "settle"]},
-                        "date": {"$gte": date_selected},
+                        "date": { 
+                            "$gte": dateRange[0],
+                            "$lte": dateRange[1]
+                        },
                         "shared.userId": ObjectId(userId)
                     },
                     {
                         "type": {"$in": ["group", "friend", "settle"]},
-                        "date": {"$gte": date_selected},
+                        "date": { 
+                            "$gte": dateRange[0],
+                            "$lte": dateRange[1]
+                        },
                         "paidBy": ObjectId(userId)
                     }
                 ]
@@ -97,18 +119,16 @@ def getSummaryForHomepage(userId, requestData):
     }
     
 def getDashboardChart(userId, requestData):
-    date_option = requestData["dateSelected"]
-    if date_option:
-        date_selected = datetime.datetime.strptime(date_option, "%a %b %d %Y")
-    else:
-        date_selected = datetime.datetime.min
-    print(date_selected)
+    dateRange = getDateTime(requestData)
     chart_data_pipelines = [
         {
             "$match": {
                 "type": "normal",
                 "paidBy": ObjectId(userId),
-                "date": { "$gte": date_selected}
+                "date": { 
+                    "$gte": dateRange[0],
+                    "$lte": dateRange[1]
+                }
             }
         },
         {
