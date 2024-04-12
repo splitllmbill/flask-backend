@@ -15,28 +15,22 @@ def getExpenseById(expenseId, userId):
     expense = dbManager.findOne(Expense, query)
     if expense is None:
         return False
-    
-    # Populate shares
-    shares = []
-    for share in expense.shares:
-        name = "you" if str(share.userId.id) == userId else dbManager.findOne(User, {"id": share.userId.id}).name
-        share_info = {
-            "amount": float(share.amount),
-            "name": name,
-            "id": str(share.id),
-            "userId": str(share.userId.id)
-        }
-        shares.append(share_info)
 
     # Constructing the expense object
-    
+    new_shares=[]
+    for share in expense.shares:
+        new_shares.append({
+            "userId": str(share.userId.id),
+            "name":str(share.userId.name),
+            "amount": float(share.amount)
+        })
     result = {
         "expenseName": expense.expenseName,
         "amount": float(expense.amount),
         "type": expense.type,
         "paidById": str(expense.paidBy.id),
         "paidBy": "you" if str(expense.paidBy.id) == userId else dbManager.findOne(User, {"id": expense.paidBy.id}).name,
-        "shares": shares,
+        "shares":new_shares,
         "createdAt": str(expense.createdAt),
         "updatedAt": str(expense.updatedAt),
         "createdBy": "you" if str(expense.createdBy.id) == userId else dbManager.findOne(User, {"id": expense.createdBy.id}).name,
@@ -51,17 +45,14 @@ def getExpenseById(expenseId, userId):
 def createExpense(userId, requestData):
     shares = requestData['shares']
     shareTotal=0
+    new_shares=[]
     for share in shares:
         shareTotal =shareTotal+share["amount"]
+        new_shares.append(Share(**share))
 
     if requestData['type'] != "normal" and shareTotal != requestData["amount"]:
          raise ValueError("Expense amount not equal to sum of shares")
     del requestData['shares']
-    new_shares = []
-    for i in shares:
-        new_share = Share(**i)
-        new_share.save()
-        new_shares.append(new_share.id)
     new_expense = Expense(**requestData)
     new_expense.shares = new_shares
     new_expense.type=requestData["type"]
@@ -102,24 +93,13 @@ def updateExpense(userId, expenseId, requestData):
     requestData['updatedBy'] = ObjectId(userId)
     if 'shares' in requestData:
         shares_data = requestData.pop('shares')
-        existing_share_ids = [share.id for share in expense.shares]
-        new_share_ids = []
         shares = []
         for share_data in shares_data:
             share = Share(userId=ObjectId(share_data['userId']), amount=share_data['amount'])
-            share.save()
             shares.append(share)
-            new_share_ids.append(share.id)
-        shares_to_delete_ids = list(set(existing_share_ids) - set(new_share_ids))
-        for shareId in shares_to_delete_ids:
-            deleteQuery = {
-                "id": shareId
-            }
-            share = dbManager.findOne(Share,deleteQuery)
-            dbManager.delete(share)
         expense.shares = shares
     dbManager.update(expense, **requestData)
-    return 'update'
+    return {"message":'Successfully updated expense', "success":"true"}
 
 
 def deleteExpense(expenseId):
