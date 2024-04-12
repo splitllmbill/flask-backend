@@ -4,7 +4,6 @@ from bson import ObjectId
 from flask import Blueprint, jsonify, request, Response, current_app, send_file
 from werkzeug.exceptions import BadRequest
 from util.response import ResponseStatus, flaskResponse
-from mongoengine.queryset.visitor import Q
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
@@ -13,7 +12,7 @@ import jwt
 from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService, upiService, dashboardService, commonService
 from models.common import Account, DatabaseManager,User, Referral, Verification, toJson
 
-from util import generator
+from util import generator, aes
 from util.auth import validate_jwt_token
 from util.response import ResponseStatus, flaskResponse
 from util.requestHandler import requestHandler
@@ -199,7 +198,7 @@ def loginUser():
             query={"email":email}
             user = dbManager.findOne(User,query)
             if user:
-                if ph.verify(user.password, password):
+                if ph.verify(user.password, aes.decrypt(password)):
                     expiration_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=10000)
                     payload = {
                         'user_id': str(user.id),              
@@ -472,7 +471,7 @@ def deleteFriend(userId, request):
 @requestHandler
 def changePassword(userId, request):
     requestData = request.get_json()
-    result = userService.changePassword(userId,requestData)
+    result = userService.changePassword(userId,aes.decrypt(requestData['password']))
     return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('/forgotPassword', methods=['POST'])

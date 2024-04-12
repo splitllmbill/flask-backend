@@ -94,7 +94,6 @@ def modifyObj(json_data,key,value):
     return json_data
 def toJson(obj):
     json_data = {}
-   
     if isinstance(obj,dict):
         for key,value in obj.items():
             json_data=modifyObj(json_data,key,value)

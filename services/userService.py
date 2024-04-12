@@ -100,11 +100,11 @@ def updateUserAccount(userId, newData):
         
     return True
 
-def changePassword(userId, requestData):
+def changePassword(userId, password):
     user = User.objects.get(id=userId)
     if user is None:
         return {"message":"User does not exist"}
-    passwordHash = ph.hash(requestData['password'])
+    passwordHash = ph.hash(password)
     user.password = passwordHash
     user.save()
     return {"message":"Password updated successfully"}
