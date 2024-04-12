@@ -172,14 +172,11 @@ def getAllExpensesForUser(user_id,request_data):
             "type": "normal"
         }
         for filter in filters:
-            print("filter",filter)
             if filter["operator"]=='IN':
                 query[filter["field"]+constants.operatorMap[filter["operator"]]] =filter["values"]
             elif filter["operator"]=='BTW':
                 query[filter["field"]+'__gte'] =float(filter["values"][0])
                 query[filter["field"]+'__lte'] =float(filter["values"][1])
-        
-        print(query)
         all_expenses = dbManager.findAll(Expense, query)
         return all_expenses
     except Exception as e:
