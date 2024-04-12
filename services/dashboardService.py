@@ -165,6 +165,11 @@ def getDashboardChart(userId, requestData):
                     ]
                 }
             }
+        },
+        {
+            "$sort": {
+                "cost": -1
+            }
         }
     ]
     result = list(dbManager.aggregate(Expense,chart_data_pipelines))
