@@ -87,7 +87,7 @@ def modifyObj(json_data,key,value):
     elif isinstance(value, datetime):
         json_data[key] = value.isoformat()
     elif isinstance(value,User) or isinstance(value,Account) or isinstance(value,Event): 
-        json_data[key] =str(value.id)
+        json_data[key] =toJson(value)
     else:
         if value is not None:
             json_data[key] = value
