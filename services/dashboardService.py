@@ -19,7 +19,6 @@ def getDateTime(requestData):
         end_dt = datetime.datetime.max
     return [start_dt,end_dt]
 
-
 def getSummaryForHomepage(userId, requestData):
     total_share = 0
     total_owe_amount = 0
@@ -48,7 +47,6 @@ def getSummaryForHomepage(userId, requestData):
         personal_expenses = float(result[0]['totalAmount'])
     else:
         personal_expenses = float(0)
-
     other_expenses_pipeline = [
         {
             "$lookup": {
