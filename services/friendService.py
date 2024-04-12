@@ -181,9 +181,7 @@ def settleUpFriendDues(user_id,friend_id):
             expense_ids= [str(expense.id) for expense in event.expenses]
             expenses=dbManager.findAll(Expense,{"id__in":expense_ids,"paidBy__in":[friend,user]})
             for expense in expenses:
-                share_ids= [str(share.id) for share in expense.shares]
-                shares=dbManager.findAll(Share,{"id__in":share_ids,"userId__in":[friend,user]})
-                for share in shares:
+                for share in expense.shares:
                     if str(expense.paidBy.id)==user_id and str(share.userId.id)==friend_id:
                         net_amount-=float(share.amount)
                     elif str(expense.paidBy.id)==friend_id and str(share.userId.id)==user_id:
