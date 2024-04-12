@@ -21,14 +21,16 @@ def flaskResponse(status, response = None):
         if response is None or response == True:
             defaultResponse['message'] = 'Success'
             response = defaultResponse
-        if response == False:
+        elif response == False:
             defaultResponse['message'] = 'No record found for id'
             response = defaultResponse
-        if type(response) == str:
+        elif type(response) == str:
             defaultResponse['message'] = response
             response = defaultResponse
         
-        if type(response) == dict or type(response) == list :
+        elif type(response) == dict :
+            response = json.dumps(toJson(response))
+        elif type(response) == list :
             response = json.dumps(response)
         else: 
             response = json.dumps(toJson(response))

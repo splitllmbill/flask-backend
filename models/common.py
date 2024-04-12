@@ -1,6 +1,6 @@
 from decimal import Decimal
 import os
-from mongoengine import Document,DecimalField, StringField, IntField, DateTimeField, ReferenceField, ListField, BinaryField, connect, BooleanField
+from mongoengine import Document,DecimalField,EmbeddedDocument,EmbeddedDocumentField, StringField, IntField, DateTimeField, ReferenceField, ListField, BinaryField, connect, BooleanField
 from mongoengine import connect, disconnect
 from dotenv import load_dotenv
 from bson import ObjectId, Timestamp, DBRef
@@ -74,14 +74,8 @@ def modifyObj(json_data,key,value):
     elif isinstance(value, list) and all(isinstance(item, DBRef) for item in value):
         ref_list = []
         for ref in value:
-            ref_collection = ref.collection
             ref_id = ref.id
-            if ref_collection == 'share':
-                share = Share.objects(id=ref_id).first()
-                if share:
-                    ref_list.append(toJson(share))
-            else:
-                ref_list.append(f"{ref_id}")
+            ref_list.append(f"{ref_id}")
         json_data[key] = ref_list
     elif isinstance(value, list) and all(isinstance(item, ObjectId) for item in value):
         json_data[key] = [str(item) for item in value]
@@ -92,18 +86,24 @@ def modifyObj(json_data,key,value):
         json_data[key]=result
     elif isinstance(value, datetime):
         json_data[key] = value.isoformat()
+    elif isinstance(value,User) or isinstance(value,Account) or isinstance(value,Event): 
+        json_data[key] =str(value.id)
     else:
         if value is not None:
             json_data[key] = value
     return json_data
 def toJson(obj):
+    print("allah")
     json_data = {}
+    print("obj",obj)
     if isinstance(obj,dict):
         for key,value in obj.items():
             json_data=modifyObj(json_data,key,value)
-    else:
+    elif hasattr(obj,"_data"):
         for key, value in obj._data.items():
             json_data=modifyObj(json_data,key,value)
+    else:
+        return obj
     return json_data
     
 class User(Document):
@@ -152,12 +152,16 @@ class Event(Document):
     updatedBy = ReferenceField('User')
     expenses = ListField(ReferenceField('Expense'))
 
+class Share(EmbeddedDocument):
+    amount = DecimalField(required=True)
+    userId = ReferenceField('User')
+    eventId = ReferenceField('Event')
 class Expense(Document):
     expenseName = StringField(required=True)
     amount = DecimalField(required=True)
     type = StringField(required=True)
     paidBy = ReferenceField('User',required=True)
-    shares = ListField(ReferenceField('Share'))
+    shares = ListField(EmbeddedDocumentField(Share))
     date = DateTimeField(required=True)
     createdAt = DateTimeField(required=True)
     updatedAt = DateTimeField(required=True)
@@ -166,10 +170,7 @@ class Expense(Document):
     category = StringField(required=False)   
     eventId = ReferenceField('Event',required=False)
 
-class Share(Document):
-    amount = DecimalField(required=True)
-    userId = ReferenceField('User')
-    eventId = ReferenceField('Event')
+
 
 class Friends(Document):
     userId = ReferenceField('User')
