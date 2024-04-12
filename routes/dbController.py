@@ -545,10 +545,8 @@ def getDashboardSummary(userId, request):
 @requestHandler
 def getDashboardChart(userId, request):
     result = dashboardService.getDashboardChart(userId,request.get_json())
-    if(result):
-        return flaskResponse(ResponseStatus.SUCCESS,result)
-    else: 
-        return flaskResponse(ResponseStatus.SUCCESS,False)
+    return flaskResponse(ResponseStatus.SUCCESS,result)
+    
     
 @db_route.route('/bulk', methods = ['POST'])
 def bulkUpdate():
