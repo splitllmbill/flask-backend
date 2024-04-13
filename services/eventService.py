@@ -144,6 +144,13 @@ def getEventByID(event_id):
         "id":event_id
     }
     event = dbManager.findOne(Event,query)
+    user_data=[]
+    for user in event.users:
+        user_data.append({
+            "id":user.id,
+            "name":user.name
+        })
+    event.users=user_data
     if event is None:
         raise Exception(ValueError)
     return event
@@ -169,21 +176,21 @@ def saveEvent(user_id,request_data):
     new_event = Event(**request_data)
     if "id" in request_data.keys():
         event=getEventByID(request_data['id'])
-        original_set = set(event.users)
+        original_set = set([str(user['id']) for user in event.users])
         modified_set = set(new_event.users)
 
         # Find the elements that are in the original set but not in the modified set
         removed_elements = original_set - modified_set
-
+        print("noob")
         # Convert the result back to a list
         removed_elements_list = list(removed_elements)
         if event.createdBy in removed_elements_list:
             raise Exception("cannot remove event creator")    
         for expense in event.expenses:
-            if expense.paidBy in removed_elements_list:
+            if expense.paidBy.i in removed_elements_list:
                 raise Exception("user present in expenses")
             for share in expense.shares:
-                if share.userId in removed_elements_list:
+                if share.userId.id in removed_elements_list:
                     raise Exception("user present in shares")
 
         new_event.updatedBy=ObjectId(user_id)

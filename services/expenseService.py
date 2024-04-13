@@ -103,12 +103,22 @@ def updateExpense(userId, expenseId, requestData):
 
 
 def deleteExpense(expenseId):
+   
     query = {
         "id": expenseId
     }
     expense = dbManager.findOne(Expense,query)
-    for share in expense.shares:
-        dbManager.delete(share)
+    if str(expense.eventId.id)!="":
+        query={
+            "id":expense.eventId.id
+        }
+        event = dbManager.findOne(Event,query)
+        new_expenses=[]
+        for expense in event.expenses:
+            if str(expense.id) != expenseId:
+                new_expenses.append(expense)
+        event.expenses=new_expenses
+        event.save()
     if expense is None:
         return False
     dbManager.delete(expense)
@@ -172,14 +182,11 @@ def getAllExpensesForUser(user_id,request_data):
             "type": "normal"
         }
         for filter in filters:
-            print("filter",filter)
             if filter["operator"]=='IN':
                 query[filter["field"]+constants.operatorMap[filter["operator"]]] =filter["values"]
             elif filter["operator"]=='BTW':
                 query[filter["field"]+'__gte'] =float(filter["values"][0])
                 query[filter["field"]+'__lte'] =float(filter["values"][1])
-        
-        print(query)
         all_expenses = dbManager.findAll(Expense, query)
         return all_expenses
     except Exception as e:
