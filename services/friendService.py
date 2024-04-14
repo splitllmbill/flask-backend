@@ -99,7 +99,7 @@ def calculate_owed_amounts(friends, expenses, user_id):
 
 def get_friend_list(user_id):
     friend_expenses_pipeline = [
-        {"$match": {"userId": ObjectId("660588f307b0501c0014566f")}},
+        {"$match": {"userId": ObjectId(user_id)}},
         {"$lookup": {
             "from": "expense",
             "let": {"userId": "$userId", "friends": "$friends"},

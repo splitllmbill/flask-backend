@@ -1,4 +1,4 @@
-from models.common import DatabaseManager,Expense, toJson
+from models.common import DatabaseManager,Expense, User
 from bson import ObjectId
 import datetime
 
@@ -20,6 +20,8 @@ def getDateTime(requestData):
     return [start_dt,end_dt]
 
 def getSummaryForHomepage(userId, requestData):
+    query={"id":ObjectId(userId)}
+    user = dbManager.findOne(User,query)
     total_share = 0
     total_owe_amount = 0
     total_owed_amount = 0
@@ -49,14 +51,6 @@ def getSummaryForHomepage(userId, requestData):
         personal_expenses = float(0)
     other_expenses_pipeline = [
         {
-            "$lookup": {
-                "from": "share",
-                "localField": "shares",
-                "foreignField": "_id",
-                "as": "shared"
-            }
-        },
-        {
             "$match": {
                 "$or": [
                     {
@@ -65,7 +59,7 @@ def getSummaryForHomepage(userId, requestData):
                             "$gte": dateRange[0],
                             "$lte": dateRange[1]
                         },
-                        "shared.userId": ObjectId(userId)
+                        "shares.userId": ObjectId(userId)
                     },
                     {
                         "type": {"$in": ["group", "friend", "settle"]},
@@ -84,7 +78,7 @@ def getSummaryForHomepage(userId, requestData):
                 "paidBy": 1,
                 "type": 1,
                 "amount": 1,
-                "shared": 1,
+                "shares": 1,
                 "expenseName": 1
             }
         }
@@ -92,7 +86,7 @@ def getSummaryForHomepage(userId, requestData):
     result = list(dbManager.aggregate(Expense,other_expenses_pipeline))
     for expense in result:
         has_share = False
-        for share in expense['shared']:
+        for share in expense['shares']:
             if str(share['userId']) == userId:
                 has_share = True
                 if expense['type'] != 'settle':
@@ -113,7 +107,8 @@ def getSummaryForHomepage(userId, requestData):
         'group_expenses': float(total_share),
         'personal_expenses': personal_expenses,
         'total_you_owe': float(total_owe_amount),
-        'total_owed_to_you': float(total_owed_amount)
+        'total_owed_to_you': float(total_owed_amount),
+        'username': user.name
     }
     
 def getDashboardChart(userId, requestData):
