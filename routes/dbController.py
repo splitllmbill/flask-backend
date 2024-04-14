@@ -139,7 +139,8 @@ def signup():
             
             # save user info
             new_user = User(**user_data)
-            passwordHash = ph.hash(new_user.password)
+            password = aes.decrypt(new_user.password)
+            passwordHash = ph.hash(password)
             new_user.password = passwordHash
             new_user.createdAt = datetime.datetime.now(datetime.timezone.utc)
             new_user.updatedAt = datetime.datetime.now(datetime.timezone.utc)
@@ -250,7 +251,7 @@ def updateUserAccount(userId, request):
     result = userService.updateUserAccount(userId,requestData)
     if not result:
         return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR,'Failed to update account details')
-    return flaskResponse(ResponseStatus.SUCCESS, result)
+    return flaskResponse(ResponseStatus.SUCCESS, { "message" : "Success" })
 
 @db_route.route('/user/account', methods=['GET'])
 @requestHandler
