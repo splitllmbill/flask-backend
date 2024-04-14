@@ -489,7 +489,7 @@ def generateVerification(userId, request):
     requestData = request.get_json()
     codeType = requestData['type']
     result = verificationService.generateVerificationCode(userId,codeType)
-    return result
+    return {"message":"Success"}
 
 @db_route.route('/verification/validate', methods = ['POST'])
 @requestHandler
@@ -500,8 +500,8 @@ def verificationValidate(userId, request):
     field = requestData['field']
     result = verificationService.validateCode(userId,code,codeType,field)
     if not result:
-        return flaskResponse(ResponseStatus.SUCCESS,'Invalid Verification Code')
-    return flaskResponse(ResponseStatus.SUCCESS,result)
+        return flaskResponse(ResponseStatus.SUCCESS,{'message':'Invalid'})
+    return flaskResponse(ResponseStatus.SUCCESS,{'message':'Success'})
 
 @db_route.route('/upi/link', methods = ['POST'])
 @requestHandler
