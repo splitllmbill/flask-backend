@@ -228,7 +228,7 @@ def settleUpFriendDues(user_id,friend_id):
                         net_amount+=float(share.amount)
             if net_amount>0:
                 request_data={
-                    "expenseName": user.name+" settled up with "+friend.name+"("+str(event.name)+")" ,
+                    "expenseName": user.name+" settled up with "+friend.name+"("+str(event.eventName)+")" ,
                     "amount": net_amount,
                     "paidBy": str(user.id),
                     "type":"settle",

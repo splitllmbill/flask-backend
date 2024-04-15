@@ -108,7 +108,7 @@ def deleteExpense(expenseId):
         "id": expenseId
     }
     expense = dbManager.findOne(Expense,query)
-    if str(expense.eventId.id)!="":
+    if expense.eventId and str(expense.eventId.id)!="":
         query={
             "id":expense.eventId.id
         }
