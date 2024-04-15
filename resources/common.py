@@ -1,5 +1,3 @@
-from flask_mail import Mail
-mail=Mail()
 class CreditorDetail:
     def __init__(self, id, name,amount):
         self.id = id
