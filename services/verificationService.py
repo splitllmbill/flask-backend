@@ -1,7 +1,11 @@
 from bson import ObjectId
-from models.common import DatabaseManager, Verification
+from models.common import DatabaseManager, User, Verification
 import datetime
 from services import userService
+from flask_mail import Mail, Message
+from resources import common
+import asyncio
+
 
 
 from util import generator
@@ -14,6 +18,12 @@ codeMap = {
     'email': ('emailCode','emailVerified'),
     'upiNumber': ('upiNumberCode','upiNumberVerified')
 }
+async def sendMail(user_id,code):
+    query={"id":ObjectId(user_id)}
+    user =dbManager.findOne(User,query)
+    msg = Message('Email Verification', recipients=[user.email])
+    msg.body = f'Your verification code is: {code}'
+    common.mail.send(msg)
 
 def generateVerificationCode(user_id,codeType):
     code = generator.codeGenerate(4)
@@ -25,6 +35,7 @@ def generateVerificationCode(user_id,codeType):
     # updateVal[codeMap[codeType][1]] = False
     user_verification = dbManager.findOne(Verification,query)
     dbManager.update(user_verification, **updateVal)
+    asyncio.run(sendMail(user_id,code))
     return updateVal
 
 def validateCode(user_id, code, codeType, field):

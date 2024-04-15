@@ -139,7 +139,8 @@ def signup():
             
             # save user info
             new_user = User(**user_data)
-            passwordHash = ph.hash(new_user.password)
+            password = aes.decrypt(new_user.password)
+            passwordHash = ph.hash(password)
             new_user.password = passwordHash
             new_user.createdAt = datetime.datetime.now(datetime.timezone.utc)
             new_user.updatedAt = datetime.datetime.now(datetime.timezone.utc)
@@ -250,7 +251,7 @@ def updateUserAccount(userId, request):
     result = userService.updateUserAccount(userId,requestData)
     if not result:
         return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR,'Failed to update account details')
-    return flaskResponse(ResponseStatus.SUCCESS, result)
+    return flaskResponse(ResponseStatus.SUCCESS, { "message" : "Success" })
 
 @db_route.route('/user/account', methods=['GET'])
 @requestHandler
@@ -488,7 +489,7 @@ def generateVerification(userId, request):
     requestData = request.get_json()
     codeType = requestData['type']
     result = verificationService.generateVerificationCode(userId,codeType)
-    return result
+    return {"message":"Success"}
 
 @db_route.route('/verification/validate', methods = ['POST'])
 @requestHandler
@@ -499,8 +500,8 @@ def verificationValidate(userId, request):
     field = requestData['field']
     result = verificationService.validateCode(userId,code,codeType,field)
     if not result:
-        return flaskResponse(ResponseStatus.SUCCESS,'Invalid Verification Code')
-    return flaskResponse(ResponseStatus.SUCCESS,result)
+        return flaskResponse(ResponseStatus.SUCCESS,{'message':'Invalid'})
+    return flaskResponse(ResponseStatus.SUCCESS,{'message':'Success'})
 
 @db_route.route('/upi/link', methods = ['POST'])
 @requestHandler
