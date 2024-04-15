@@ -512,7 +512,7 @@ def generateUPILink(userId, request):
     note = requestData['note']
     result = upiService.generateUPILink(dest_userId, amount, note)
     if not result:
-        return flaskResponse(ResponseStatus.SUCCESS,False)
+        return flaskResponse(ResponseStatus.SUCCESS,{'message':'No record found for id'})
     return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('/upi/image', methods = ['POST'])
