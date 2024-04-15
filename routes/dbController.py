@@ -489,7 +489,7 @@ def generateVerification(userId, request):
     requestData = request.get_json()
     codeType = requestData['type']
     result = verificationService.generateVerificationCode(userId,codeType)
-    return {"message":"Success"}
+    return flaskResponse(ResponseStatus.SUCCESS,result)
 
 @db_route.route('/verification/validate', methods = ['POST'])
 @requestHandler
