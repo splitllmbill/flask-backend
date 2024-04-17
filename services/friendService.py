@@ -50,6 +50,8 @@ def getFriendDetails(user_id, friend_id):
                     "expenseDate": expense.createdAt.isoformat(),
                     "expenseName": expense.expenseName,
                     "expenseId": str(expense.id),
+                    "eventId": str(expense.eventId.id) if expense.eventId else str(expense.eventId),
+                    "eventName": str(expense.eventId.eventName) if expense.eventId else str(expense.eventId),
                     "category": expense.category,
                     "user_summary": {
                         "oweAmount": float(owe_amount),
