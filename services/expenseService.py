@@ -38,7 +38,8 @@ def getExpenseById(expenseId, userId):
         "category": expense.category,
         "date": str(expense.date),
         "id": str(expense.id),
-        "eventId": str(expense.eventId.id) if expense and hasattr(expense, 'eventId') and hasattr(expense.eventId, 'id') else ""
+        "eventId": str(expense.eventId.id) if expense and hasattr(expense, 'eventId') and hasattr(expense.eventId, 'id') else "None",
+        "eventName": str(expense.eventId.eventName) if expense and hasattr(expense, 'eventId') and hasattr(expense.eventId, 'eventName') else "None"
     }
     return result
 
