@@ -55,7 +55,7 @@ def getFriendDetails(user_id, friend_id):
                     "category": expense.category,
                     "user_summary": {
                         "oweAmount": float(owe_amount),
-                        "whoOwes": who_owes,
+                        "owePerson": who_owes,
                     },
                     "expenseType": expense.type
                 }

@@ -163,8 +163,9 @@ def deleteEvent(event_id):
     if event is None:
         return False
     dues = eventService.getEventDues(event_id)
-    if dues.eventDues:
-        return {"message":'Cannot delete event. There are unsettled dues.', "success":"false"}
+    for due in dues.eventDues:
+        if due["creditorDetails"] and len(due["creditorDetails"]) > 0:
+            return {"message":'Cannot delete event. There are unsettled dues.', "success":"false"}
     else:
         for expense in event.expenses:
             dbManager.delete(expense)
