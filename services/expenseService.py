@@ -44,6 +44,8 @@ def getExpenseById(expenseId, userId):
     return result
 
 def createExpense(userId, requestData):
+    if(requestData["expenseName"]=="" or requestData["category"]=="" or requestData["amount"]==0 or requestData["paidBy"]=="" or len(requestData["shares"])==0):
+        return {"message":"There are some missing/invalid field. Please check your input and try again!", "success":"false"}
     shares = requestData['shares']
     shareTotal=0
     new_shares=[]
@@ -80,9 +82,11 @@ def createExpense(userId, requestData):
     else:
         new_expense.save()
 
-    return new_expense
+    return {"message":"Expense created!", "success":"true", "data": toJson(new_expense)}
 
 def updateExpense(userId, expenseId, requestData):
+    if(requestData["expenseName"]=="" or requestData["category"]=="" or requestData["amount"]==0 or requestData["paidBy"]=="" or len(requestData["shares"])==0):
+        return {"message":"There are some missing/invalid field. Please check your input and try again!", "success":"false"}
     query = {
         "id": expenseId
     }
