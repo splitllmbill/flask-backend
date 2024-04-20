@@ -32,7 +32,8 @@ def generate_unique_filename(filename):
     return unique_filename
 
 @llm_route.route('/upload', methods=['POST'])
-def upload_file():
+@requestHandler
+def upload_file(userId, request):
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'})
     file = request.files['file']
