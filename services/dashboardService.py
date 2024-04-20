@@ -3,7 +3,6 @@ from bson import ObjectId
 import datetime
 
 dbManager = DatabaseManager()
-dbManager.connect()
 
 def getDateTime(requestData):
     start = requestData['startDate']

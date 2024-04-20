@@ -3,7 +3,6 @@ import json
 from bson import ObjectId
 from flask import Blueprint, jsonify, request, Response, current_app, send_file
 from werkzeug.exceptions import BadRequest
-from util.response import ResponseStatus, flaskResponse
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
@@ -274,13 +273,9 @@ def getNonGroupExpenses(userId, request):
 @db_route.route('/expenses/personal', methods=['POST'])
 @requestHandler
 def getAllExpensesForUser(userId, request):
-    try:
-        requestData = request.get_json()
-        expenses = expenseService.getAllExpensesForUser(userId,requestData)
-        return flaskResponse(ResponseStatus.SUCCESS, [toJson(expense) for expense in expenses])
-    except Exception as e:
-        print(f"Error in getAllExpensesForUser route: {e}")
-        return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR, str(e))
+    requestData = request.get_json()
+    expenses = expenseService.getAllExpensesForUser(userId,requestData)
+    return flaskResponse(ResponseStatus.SUCCESS, [toJson(expense) for expense in expenses])
 
 @db_route.route('/expense', methods = ['POST'])
 @requestHandler
@@ -547,16 +542,9 @@ def getDashboardChart(userId, request):
     result = dashboardService.getDashboardChart(userId,request.get_json())
     return flaskResponse(ResponseStatus.SUCCESS,result)
     
-    
-@db_route.route('/bulk', methods = ['POST'])
-def bulkUpdate():
-    userService.bulkUpdate()
-    return "Success"
-
 @db_route.route('/filter-options', methods = ['POST'])
 @requestHandler
 def filterOptions(userId, request):
-    print(request)
     requestData = request.get_json()
     expense = commonService.getFilterOptions(requestData)
     return flaskResponse(ResponseStatus.SUCCESS, expense)

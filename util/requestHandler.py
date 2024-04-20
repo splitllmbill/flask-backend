@@ -12,12 +12,15 @@ def requestHandler(function):
             userId = validate_jwt_token(request)
             return function(userId, request, *args, **kwargs)
         except jwt.PyJWTError as e:
-            print(e)
-            return flaskResponse(ResponseStatus.INVALID_TOKEN)
+            error_message = f"{type(e).__name__}: {e}"
+            print(f"Error at {request.path}: {error_message}")
+            return flaskResponse(ResponseStatus.INVALID_TOKEN,str(e))
         except (BadRequest, ValueError) as e:
-            print(e)
-            return flaskResponse(ResponseStatus.BAD_REQUEST)
+            error_message = f"{type(e).__name__}: {e}"
+            print(f"Error at {request.path}: {error_message}")
+            return flaskResponse(ResponseStatus.BAD_REQUEST,str(e))
         except Exception as e:
-            print(e)
-            return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+            error_message = f"{type(e).__name__}: {e}"
+            print(f"Error at {request.path}: {error_message}")
+            return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR,str(e))
     return decorated_function

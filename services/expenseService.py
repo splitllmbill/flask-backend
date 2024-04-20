@@ -1,12 +1,11 @@
-from models.common import DatabaseManager,Expense,Event, Friends, Share, User, toJson
+from models.common import DatabaseManager,Expense,Event, Share, User, toJson
 from datetime import datetime as dt
 from bson import ObjectId
-from services import expenseService, eventService, shareService, friendService
+from services import expenseService, shareService
 
 from constants import constants
 
 dbManager = DatabaseManager()
-dbManager.connect()
 
 def getExpenseById(expenseId, userId):
     query = {
@@ -44,8 +43,10 @@ def getExpenseById(expenseId, userId):
     return result
 
 def createExpense(userId, requestData):
-    if(requestData["expenseName"]=="" or requestData["category"]=="" or requestData["amount"]==0 or requestData["paidBy"]=="" or len(requestData["shares"])==0):
-        return {"message":"There are some missing/invalid field. Please check your input and try again!", "success":"false"}
+    if requestData["expenseName"] == "" or requestData["category"] == "" or requestData["amount"] == 0:
+        return {"message": "There are some missing/invalid fields. Please check your input and try again!", "success": "false"}
+    if requestData["type"] != "normal" and (requestData["paidBy"] == "" or len(requestData["shares"]) == 0):
+        return {"message": "There are some missing/invalid fields. Please check your input and try again!", "success": "false"}
     shares = requestData['shares']
     shareTotal=0
     new_shares=[]
@@ -85,7 +86,9 @@ def createExpense(userId, requestData):
     return {"message":"Expense created!", "success":"true", "data": toJson(new_expense)}
 
 def updateExpense(userId, expenseId, requestData):
-    if(requestData["expenseName"]=="" or requestData["category"]=="" or requestData["amount"]==0 or requestData["paidBy"]=="" or len(requestData["shares"])==0):
+    if requestData["expenseName"] == "" or requestData["category"] == "" or requestData["amount"] == 0:
+        return {"message": "There are some missing/invalid fields. Please check your input and try again!", "success": "false"}
+    if 'type' not in requestData and (requestData["paidBy"] == "" or len(requestData["shares"]) == 0):
         return {"message":"There are some missing/invalid field. Please check your input and try again!", "success":"false"}
     query = {
         "id": expenseId
@@ -108,7 +111,6 @@ def updateExpense(userId, expenseId, requestData):
 
 
 def deleteExpense(expenseId):
-   
     query = {
         "id": expenseId
     }
@@ -177,7 +179,6 @@ def getEventExpensesAlongWithUserSummary(userId, eventId):
     }
     return result
         
-
 def getAllExpensesForUser(user_id,request_data):
     try:
         user_object_id = ObjectId(user_id)
@@ -192,7 +193,7 @@ def getAllExpensesForUser(user_id,request_data):
             elif filter["operator"]=='BTW':
                 query[filter["field"]+'__gte'] =float(filter["values"][0])
                 query[filter["field"]+'__lte'] =float(filter["values"][1])
-        all_expenses = dbManager.findAll(Expense, query)
+        all_expenses = dbManager.findAllMultiSort(Expense, query, [('date','-'),('updatedAt','-')])
         return all_expenses
     except Exception as e:
         print(f"Error in getAllExpensesForUser function: {e}")

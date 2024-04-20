@@ -5,7 +5,6 @@ from datetime import datetime as dt
 from collections import defaultdict
 
 dbManager = DatabaseManager()
-dbManager.connect()
 
 def getFriendDetails(user_id, friend_id):
     friend = dbManager.findOne(User,{"id":friend_id})
