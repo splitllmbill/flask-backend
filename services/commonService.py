@@ -2,7 +2,6 @@ from models.common import DatabaseManager, Expense
 from constants import constants
 
 dbManager = DatabaseManager()
-dbManager.connect()
 
 def getFilterOptions(requestData):
     result={}

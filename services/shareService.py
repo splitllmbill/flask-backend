@@ -1,7 +1,6 @@
 from models.common import DatabaseManager,Expense,Share
 
 dbManager = DatabaseManager()
-dbManager.connect()
 
 def getExpenseShares(userId, expenseId):
     expense = dbManager.findOne(Expense, {"id": expenseId})

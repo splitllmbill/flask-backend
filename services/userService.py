@@ -7,7 +7,6 @@ from models.common import Account, DatabaseManager, User, Verification, Referral
 from services import emailService 
 
 dbManager = DatabaseManager()
-dbManager.connect()
 
 ph = PasswordHasher()
 
@@ -132,18 +131,3 @@ def generate_random_password(length=12):
     alphabet = string.ascii_letters + string.digits
     password = ''.join(secrets.choice(alphabet) for _ in range(length))
     return password
-
-def bulkUpdate():
-    users = dbManager.findAll(User)
-    for i in users:
-        # if i.email == 'sivaganesh@gmail.com' or i.email == 'sb@gmail.com':
-        #     # i.uuid = generator.codeGenerate(6)
-        #     # print('new uuid',i.uuid)
-        #     print(i.email)
-        #     # i.save()
-        # else:
-        #     i.uuid = generator.codeGenerate(6)
-        #     print('new uuid',i.uuid)
-        #     print(i.email)
-        #     i.save()
-        print()

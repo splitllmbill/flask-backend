@@ -1,11 +1,9 @@
 from bson import ObjectId
-from models.common import DatabaseManager, Referral, toJson
+from models.common import DatabaseManager, Referral
 
 from util import generator
-import datetime
 
 dbManager = DatabaseManager()
-dbManager.connect()
 
 def generateInviteCode(user_id):
     inviteCode = generator.codeGenerate(6)
