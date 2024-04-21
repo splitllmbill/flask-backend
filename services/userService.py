@@ -4,6 +4,7 @@ import string
 from argon2 import PasswordHasher
 from bson import ObjectId
 from models.common import Account, DatabaseManager, User, Verification, Referral
+from services import emailService 
 
 dbManager = DatabaseManager()
 
@@ -109,16 +110,20 @@ def changePassword(userId, password):
     return {"message":"Password updated successfully"}
 
 def forgotPassword(requestData):
-    user = User.objects.get(email=requestData['email'])
-    if user is None:
+    try:
+        user = User.objects.get(email=requestData['email'])
+    except User.DoesNotExist:
         return {"message":"User does not exist"}
+
     new_password = generate_random_password()  
     password_hash = ph.hash(new_password)  
     user.password = password_hash
     user.save()
-    # Implement this function to send an email with the new password    
+    
+    emailService.send_password_reset_email(user.email, new_password)
+    
     return {
-        "message": "Password reset successfully. Please check the console for the new password.",
+        "message": "Password reset successfully. Please check your email for the new password.",
         "new_password": new_password
     }
 
