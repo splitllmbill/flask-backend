@@ -105,14 +105,16 @@ def convert_expense(userId, request):
         result = response.text
         formatted = result.replace('`','').replace('json','').replace('JSON','').strip()
         jsonResponse = json.loads(formatted)
+        jsonArray = [dict((k.lower(), v) for k, v in i.items()) for i in jsonResponse]
     except Exception as e:
         traceback.print_exc()
+        print('API Response: ',result)
         promptDocument['failureHits']+=1
         promptDocument.save()
         return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR,{'message': 'Exception while calling Gemini API', 'llmoutput': {}, 'error': str(e)})
     promptDocument['successHits']+=1
     promptDocument.save()
-    return flaskResponse(ResponseStatus.SUCCESS,{'message': 'Expense Processed Successfully', 'llmoutput': jsonResponse})
+    return flaskResponse(ResponseStatus.SUCCESS,{'message': 'Expense Processed Successfully', 'llmoutput': jsonArray})
         
 @llm_route.route('/home', methods=['GET'])
 def home():
