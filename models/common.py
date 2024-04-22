@@ -195,3 +195,13 @@ class Prompts(Document):
     hits = IntField(default=0)
     successHits = IntField(default=0)
     failureHits = IntField(default=0)
+
+class PaymentPage(Document):
+    userId = ReferenceField('User')
+    upiId = StringField(required=True)
+    upiLink = StringField(required=True)
+    link = StringField(required=True)
+    amount = DecimalField(required=True)
+    note = StringField(required=True)
+    createdAt = DateTimeField(required=True)
+    expiryAt = DateTimeField(required=True)

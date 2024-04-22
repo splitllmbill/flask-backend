@@ -8,7 +8,7 @@ from argon2.exceptions import VerifyMismatchError
 from mongoengine.errors import NotUniqueError
 import jwt
 
-from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService, upiService, dashboardService, commonService
+from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService, upiService, dashboardService, commonService, paymentService
 from models.common import Account, DatabaseManager,User, Referral, Verification, toJson
 
 from util import generator, aes
@@ -548,3 +548,30 @@ def filterOptions(userId, request):
     requestData = request.get_json()
     expense = commonService.getFilterOptions(userId,requestData)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
+
+@db_route.route('/payment', methods = ['POST'])
+@requestHandler
+def createPayment(userId, request):
+    requestData = request.get_json()
+    page = paymentService.createPage(userId,requestData)
+    return flaskResponse(ResponseStatus.SUCCESS, page)
+
+@db_route.route('/payment', methods = ['GET'])
+@requestHandler
+def viewPaymentPages(userId, request):
+    pages = paymentService.viewPages(userId)
+    return flaskResponse(ResponseStatus.SUCCESS, [toJson(page) for page in pages])
+
+@db_route.route('/payment/<link>', methods = ['GET'])
+def viewPaymentPage(link):
+    try:
+        page = paymentService.viewPage(link)
+    except (BadRequest,ValueError) as e:
+        print(e)
+        r = flaskResponse(ResponseStatus.BAD_REQUEST)
+    except Exception as e:
+        print(e)
+        r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+    if not page:
+        return flaskResponse(ResponseStatus.SUCCESS, {'message':'No record found for id'})
+    return flaskResponse(ResponseStatus.SUCCESS, page)
