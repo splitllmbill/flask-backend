@@ -546,5 +546,5 @@ def getDashboardChart(userId, request):
 @requestHandler
 def filterOptions(userId, request):
     requestData = request.get_json()
-    expense = commonService.getFilterOptions(requestData)
+    expense = commonService.getFilterOptions(userId,requestData)
     return flaskResponse(ResponseStatus.SUCCESS, expense)

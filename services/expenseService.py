@@ -189,10 +189,13 @@ def getAllExpensesForUser(user_id,request_data):
         }
         for filter in filters:
             if filter["operator"]=='IN':
-                query[filter["field"]+constants.operatorMap[filter["operator"]]] =filter["values"]
-            elif filter["operator"]=='BTW':
-                query[filter["field"]+'__gte'] =float(filter["values"][0])
-                query[filter["field"]+'__lte'] =float(filter["values"][1])
+                lowercase_filter = [string.lower() for string in filter["values"]]
+                query[filter["field"]+constants.operatorMap[filter["operator"]]] = lowercase_filter
+            elif filter["operator"] == "BTW":
+                if filter["values"][0] != "MIN":
+                    query[filter["field"] + '__gte'] = float(filter["values"][0])
+                if filter["values"][1] != "MAX":
+                    query[filter["field"] + '__lte'] = float(filter["values"][1])
         all_expenses = dbManager.findAllMultiSort(Expense, query, [('date','-'),('updatedAt','-')])
         return all_expenses
     except Exception as e:

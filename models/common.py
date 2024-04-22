@@ -42,8 +42,11 @@ class DatabaseManager:
     def findOne(self, model, query={}):
         return model.objects(**query).first()
     
-    def findDistinct(self, model, field):
-        return model.objects.distinct(field)
+    def findDistinct(self, model, field, query=None):
+        query_set = model.objects
+        if query:
+            query_set = query_set.filter(query)
+        return query_set.distinct(field)
 
     def update(self, document, **kwargs):
         account_fields = set(type(document)._fields_ordered)
