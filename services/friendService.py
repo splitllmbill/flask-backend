@@ -101,6 +101,9 @@ def calculate_owed_amounts(friends, expenses, user_id):
 def get_friend_list(user_id):
     friend_expenses_pipeline = [
         {"$match": {"userId": ObjectId(user_id)}},
+        {"$addFields": {
+            "friends": {"$ifNull": ["$friends", []]}  # Ensure 'friends' field exists with a default value of an empty array
+        }},
         {"$lookup": {
             "from": "expense",
             "let": {"userId": "$userId", "friends": "$friends"},
@@ -125,7 +128,7 @@ def get_friend_list(user_id):
             "as": "matchedExpenses"
         }}
     ]
-
+    
     result = list(dbManager.aggregate(Friends,friend_expenses_pipeline))
     if len(result) == 0:
         return {
