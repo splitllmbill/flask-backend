@@ -147,7 +147,8 @@ def getEventByID(event_id):
     for user in event.users:
         user_data.append({
             "id":user.id,
-            "name":user.name
+            "name":user.name,
+            "email":user.email
         })
     event.users=user_data
     if event is None:
@@ -212,11 +213,13 @@ def getEventOrFriendUsers(userId,type,id):
         user = dbManager.findOne(User,{"id":userId})
         users.append({
             "name": user.name,
+            "email":user.email,
             "id": userId
         })
         friend = dbManager.findOne(User,{"id":id})
         users.append({
             "name": friend.name,
+            "email":friend.email,
             "id": id
         })
     elif type=='event':
@@ -229,6 +232,7 @@ def getEventOrFriendUsers(userId,type,id):
         for user in event.users:
             res = {
                 "name": user.name,
+                "email":user.email,
                 "id": str(user.id)
             }
             users.append(res)
