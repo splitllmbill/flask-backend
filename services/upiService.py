@@ -5,7 +5,6 @@ import qrcode
 from io import BytesIO
 
 dbManager = DatabaseManager()
-dbManager.connect()
 
 def generateUPILink(userId, amount, note):
     query={

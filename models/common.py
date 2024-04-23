@@ -31,12 +31,22 @@ class DatabaseManager:
         if sort_field not in model._fields:
             return model.objects(**query)
         return model.objects(**query).order_by(sort_order + sort_field)
+    
+    def findAllMultiSort(self, model, query={}, sort_fields=[("createdAt", "-")]):
+        for field, order in sort_fields:
+            if field not in model._fields:
+                return model.objects(**query)
+        sort_params = [(order + field) for field, order in sort_fields]
+        return model.objects(**query).order_by(*sort_params)
 
     def findOne(self, model, query={}):
         return model.objects(**query).first()
     
-    def findDistinct(self, model, field):
-        return model.objects.distinct(field)
+    def findDistinct(self, model, field, query=None):
+        query_set = model.objects
+        if query:
+            query_set = query_set.filter(query)
+        return query_set.distinct(field)
 
     def update(self, document, **kwargs):
         account_fields = set(type(document)._fields_ordered)
@@ -154,6 +164,7 @@ class Share(EmbeddedDocument):
     amount = DecimalField(required=True)
     userId = ReferenceField('User')
     eventId = ReferenceField('Event')
+
 class Expense(Document):
     expenseName = StringField(required=True)
     amount = DecimalField(required=True)
@@ -168,8 +179,6 @@ class Expense(Document):
     category = StringField(required=False)   
     eventId = ReferenceField('Event',required=False)
 
-
-
 class Friends(Document):
     userId = ReferenceField('User')
     friends = ListField(ReferenceField('User'))
@@ -178,3 +187,21 @@ class BillImages(Document):
     expenseId = ReferenceField('Expense')
     name = StringField(required=True)
     data = BinaryField(required=True)
+
+class Prompts(Document):
+    type = StringField(required=True)
+    prompt = StringField(required=True)
+    version = IntField(required=True)
+    hits = IntField(default=0)
+    successHits = IntField(default=0)
+    failureHits = IntField(default=0)
+
+class PaymentPage(Document):
+    userId = ReferenceField('User')
+    upiId = StringField(required=True)
+    upiLink = StringField(required=True)
+    link = StringField(required=True)
+    amount = DecimalField(required=True)
+    note = StringField(required=True)
+    createdAt = DateTimeField(required=True)
+    expiryAt = DateTimeField(required=True)

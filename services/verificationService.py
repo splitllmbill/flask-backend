@@ -5,7 +5,6 @@ from services import userService,emailService
 from util import generator
 
 dbManager = DatabaseManager()
-dbManager.connect()
 
 codeMap = {
     'mobile': ('mobileCode','mobileVerified'),

@@ -6,7 +6,6 @@ from bson import ObjectId
 from services import expenseService,eventService,shareService,userService, friendService
 
 dbManager = DatabaseManager()
-dbManager.connect()
 
 def getUserEvents(user_id):
     
