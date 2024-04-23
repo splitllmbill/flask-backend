@@ -178,3 +178,12 @@ class BillImages(Document):
     expenseId = ReferenceField('Expense')
     name = StringField(required=True)
     data = BinaryField(required=True)
+
+class AuditLog(Document):
+    fieldId = StringField()
+    actionType = StringField(required=True, choices=['updated','deleted','settle'])
+    createdBy = ReferenceField('User',required=True)
+    createdAt = DateTimeField(required=True)
+    category = StringField(required=True, choices=['expense','event'])
+    fromValueJson = StringField(required=False)
+    toValueJson = StringField(required=False)

@@ -1,6 +1,7 @@
-from models.common import DatabaseManager,Expense,Event, Friends, Share, User, toJson
+from models.common import DatabaseManager,Expense,Event, Friends, Share, User, toJson, AuditLog
 from datetime import datetime as dt
 from bson import ObjectId
+from datetime import datetime
 from services import expenseService, eventService, shareService, friendService
 
 from constants import constants
@@ -87,6 +88,7 @@ def createExpense(userId, requestData):
 def updateExpense(userId, expenseId, requestData):
     if(requestData["expenseName"]=="" or requestData["category"]=="" or requestData["amount"]==0 or requestData["paidBy"]=="" or len(requestData["shares"])==0):
         return {"message":"There are some missing/invalid field. Please check your input and try again!", "success":"false"}
+    print("enter updateExpense")
     query = {
         "id": expenseId
     }
@@ -96,13 +98,76 @@ def updateExpense(userId, expenseId, requestData):
     requestData['paidBy'] = ObjectId(requestData['paidBy'])
     requestData['updatedAt'] = dt.utcnow()
     requestData['updatedBy'] = ObjectId(userId)
+    updatedLog = AuditLog()
+    updatedLog.fieldId = str(expense.id)
+    updatedLog.actionType = "updated"
+    updatedLog.createdBy = ObjectId(userId)
+    updatedLog.createdAt = dt.utcnow()
+    updatedLog.category = "expense"
+    oldExpenseShare = {}
+    fromValueJsonShare = []
+    toValueJsonShare = []
+    fromValueJson = {}
+    toValueJson = {}
+    share_ids = [str(share.id) for share in expense.shares]
+    query = {"id__in": share_ids}
+    print(query)
+    shares = dbManager.findAll(Share, query)
+    print("enter updateExpense2", shares)
     if 'shares' in requestData:
         shares_data = requestData.pop('shares')
+        existing_share_ids = [share.id for share in expense.shares]
+        print("enter updateExpense5", shares)
+        for share in shares:
+            print(share, "printing ", share.userId)
+            oldExpenseShare[str(share.userId.id)] = float(share.amount)
+        print("enter updateExpense6", oldExpenseShare)
+        new_share_ids = []
         shares = []
         for share_data in shares_data:
             share = Share(userId=ObjectId(share_data['userId']), amount=share_data['amount'])
             shares.append(share)
         expense.shares = shares
+    print("enter updateExpense3")
+    for share in expense.shares:
+        if str(share.userId.id) in oldExpenseShare and float(share.amount) != oldExpenseShare[share.userId]:
+            fromValueJsonShare.append({
+                "userId": str(share.userId.id),
+                "amount": oldExpenseShare[str(share.userId.id)]
+            })
+            toValueJsonShare.append({
+                "userId": str(share.userId.id),
+                "amount": oldExpenseShare[str(share.userId.id)]
+            })
+        if share.userId not in oldExpenseShare:
+            toValueJsonShare.append({
+                "userId": str(share.userId.id),
+                "amount": oldExpenseShare[str(share.userId.id)]
+            })
+    dateStr = datetime.strptime(str(requestData["date"]), '%a %b %d %Y').strftime('%Y-%m-%dT%H:%M:%S')
+    if expense.expenseName != requestData["expenseName"]:
+        print(expense.expenseName, " ", requestData["expenseName"])
+        fromValueJson["expenseName"] = expense.expenseName
+        toValueJson["expenseName"] = requestData["expenseName"]
+    if float(expense.amount) != float(requestData["amount"]):
+        print(expense.amount, " ",requestData["amount"])
+        fromValueJson["amount"] = expense.amount
+        toValueJson["amount"] = requestData["amount"]
+    if str(expense.paidBy.id) != str(requestData["paidBy"]):
+        fromValueJson["paidBy"] = expense.paidBy.id
+        toValueJson["paidBy"] = requestData["paidBy"]
+    if toValueJsonShare is not None and toValueJsonShare != []:
+        fromValueJson["shares"] = fromValueJsonShare
+        toValueJson["shares"] = toValueJsonShare
+    if str(expense.date) != str(dateStr):
+        fromValueJson["date"] = expense.date
+        toValueJson["date"] = dateStr
+    updatedLog.fromValueJson = str(toJson(fromValueJson))
+    updatedLog.toValueJson = str(toJson(toValueJson))
+    
+    print("printing updatedd logggg")
+    print(toJson(updatedLog))
+    updatedLog.save()
     dbManager.update(expense, **requestData)
     return {"message":'Successfully updated expense', "success":"true"}
 

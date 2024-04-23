@@ -282,6 +282,7 @@ def getAllExpensesForUser(userId, request):
         print(f"Error in getAllExpensesForUser route: {e}")
         return flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR, str(e))
 
+# add log
 @db_route.route('/expense', methods = ['POST'])
 @requestHandler
 def createExpense(userId, request):
@@ -289,6 +290,7 @@ def createExpense(userId, request):
     expense = expenseService.createExpense(userId,requestData)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
 
+# add log
 @db_route.route('/expense/<expenseId>', methods = ['PUT'])
 @requestHandler
 def updateExpense(userId, request, expenseId):
@@ -296,6 +298,7 @@ def updateExpense(userId, request, expenseId):
     expense = expenseService.updateExpense(userId,expenseId,requestData)
     return flaskResponse(ResponseStatus.SUCCESS, expense)
 
+# add log
 @db_route.route('/expense/<expenseId>', methods = ['DELETE'])
 @requestHandler
 def deleteExpense(userId, request, expenseId):
@@ -356,6 +359,7 @@ def getEventDuesForUser(user_id,request,event_id):
     result=eventService.getEventDuesForUser(event_id,user_id)
     return flaskResponse(ResponseStatus.SUCCESS,result)
 
+# add log
 @db_route.route('/event', methods=['POST'])
 def createEvent():
     if request.method == 'POST':
@@ -381,6 +385,7 @@ def createEvent():
         r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
     return r
 
+# add log
 @db_route.route('/event', methods=['PUT'])
 def updateEvent():
     if request.method == 'PUT':
@@ -414,6 +419,7 @@ def getEvent(event_id):
     r=flaskResponse(ResponseStatus.SUCCESS,event)
     return r
 
+# add log
 @db_route.route('/event/<event_id>', methods=['DELETE'])
 def deleteEvent(event_id):
     session_user_id = validate_jwt_token(request)
@@ -434,6 +440,8 @@ def getFriendExpenses(user_id, request, friend_id):
     if result:
         return flaskResponse(ResponseStatus.SUCCESS,result)
     return flaskResponse(ResponseStatus.BAD_REQUEST)
+
+# add log
 
 @db_route.route('/user/expense/friend/<friend_id>/settleup', methods=['POST'])
 @requestHandler
