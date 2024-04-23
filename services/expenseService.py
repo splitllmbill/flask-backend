@@ -21,6 +21,7 @@ def getExpenseById(expenseId, userId):
         new_shares.append({
             "userId": str(share.userId.id),
             "name":str(share.userId.name),
+            "email":str(share.userId.email),
             "amount": float(share.amount)
         })
     result = {
@@ -29,6 +30,7 @@ def getExpenseById(expenseId, userId):
         "type": expense.type,
         "paidById": str(expense.paidBy.id),
         "paidBy": "you" if str(expense.paidBy.id) == userId else dbManager.findOne(User, {"id": expense.paidBy.id}).name,
+        "paidByEmail":dbManager.findOne(User, {"id": expense.paidBy.id}).email,
         "shares":new_shares,
         "createdAt": str(expense.createdAt),
         "updatedAt": str(expense.updatedAt),
