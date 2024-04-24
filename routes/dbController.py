@@ -397,7 +397,7 @@ def updateEvent():
 
         except Exception as e:
             print(e)
-            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR)
+            r = flaskResponse(ResponseStatus.INTERNAL_SERVER_ERROR,str(e))
     else:
         r = flaskResponse(ResponseStatus.METHOD_NOT_ALLOWED)
     return r

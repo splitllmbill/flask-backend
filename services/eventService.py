@@ -177,23 +177,24 @@ def saveEvent(user_id,request_data):
     new_event = Event(**request_data)
     if "id" in request_data.keys():
         event=getEventByID(request_data['id'])
-        original_set = set([str(user['id']) for user in event.users])
-        modified_set = set(new_event.users)
-
+        original_set = set([str(user['id'].id) for user in event.users])
+        modified_set = set([str(user.id) for user in  new_event.users])
         # Find the elements that are in the original set but not in the modified set
         removed_elements = original_set - modified_set
-        print("noob")
         # Convert the result back to a list
         removed_elements_list = list(removed_elements)
-        if event.createdBy in removed_elements_list:
+        if str(event.createdBy.id) in removed_elements_list:
             raise Exception("cannot remove event creator")    
         for expense in event.expenses:
-            if expense.paidBy.i in removed_elements_list:
+            if str(expense.paidBy.id) in removed_elements_list:
                 raise Exception("user present in expenses")
             for share in expense.shares:
-                if share.userId.id in removed_elements_list:
+                if str(share.userId.id) in removed_elements_list:
                     raise Exception("user present in shares")
 
+    
+        new_event.createdBy=event.createdBy
+        new_event.createdAt=event.createdAt
         new_event.updatedBy=ObjectId(user_id)
         new_event.updatedAt= dt.utcnow()
     else:
