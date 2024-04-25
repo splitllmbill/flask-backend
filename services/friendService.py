@@ -165,43 +165,56 @@ def getNonGroupExpenses(user_id):
     if not user:
         return {"error": "User not found"}
     
-    expenses =dbManager.findAll(Expense,{"type":"friend"})
-    friends_owe = {}
+    expenses_paidBy = list(dbManager.findAll(Expense, {"type": "friend", "paidBy": user_id}))
+    query = {"type": "friend", "shares__userId": user_id}
+    expenses_shares = list(dbManager.findAll(Expense, query))
+    expenses = expenses_paidBy + [expense for expense in expenses_shares if expense.id not in [exp.id for exp in expenses_paidBy]]
+
+    friends_map = {}
+    friends_data = []
     overall_you_owe = 0
     overall_you_are_owed = 0
     
     for expense in expenses:
-        user_owe = 0
-        friend_owe = 0
-
         for share in expense.shares:
             friend_id = str(share.userId.id)
+            if share.userId.id == user.id:
+                if expense.paidBy.id == user.id:
+                    continue
+                friend_id = str(expense.paidBy.id)
             friend = dbManager.findOne(User,{"id":friend_id})
-
-            if share.userId == user and expense.paidBy == friend:
-                user_owe += float(share.amount)
-            elif share.userId == friend and expense.paidBy == user:
-                friend_owe += float(share.amount)
-
-        owe_amount = abs(friend_owe - user_owe)
-        who_owes = "friend" if friend_owe > user_owe else "user"
-        
-        if who_owes == "user":
-            overall_you_owe += owe_amount
+            if share.userId.id != expense.paidBy.id:
+                if expense.paidBy.id == user.id:
+                    if share.userId.id not in friends_map:
+                        friends_map[share.userId.id] = {
+                            "amount": float(share.amount),
+                            "name": friend.name
+                            }
+                    else:
+                        friends_map[share.userId.id]["amount"] += float(share.amount)
+                else:
+                    if expense.paidBy.id not in friends_map:
+                        friends_map[expense.paidBy.id] = {
+                            "amount": -float(share.amount),
+                            "name": friend.name
+                            }
+                    else:
+                        friends_map[expense.paidBy.id]["amount"] -= float(share.amount)
+    for friend_expense in friends_map:
+        who_owes = "friend"
+        if friends_map[friend_expense]["amount"] < 0:
+            overall_you_owe += abs(friends_map[friend_expense]["amount"])
+            who_owes = "user"
         else:
-            overall_you_are_owed += owe_amount
-
-        if friend_id not in friends_owe:
-            friends_owe[friend_id] = {
-                "name": friend.name,
-                "id": str(friend_id),
-                "oweAmount": float(owe_amount),
-                "whoOwes": who_owes
+            overall_you_are_owed += abs(friends_map[friend_expense]["amount"])
+        friends_data.append(
+            {
+                "name": friends_map[friend_expense]["name"],
+                "id": str(friend_expense),
+                "oweAmount": abs(friends_map[friend_expense]["amount"]),
+                "whoOwes": who_owes   
             }
-        else:
-            friends_owe[friend_id]["oweAmount"] += owe_amount
-
-    friends_data = list(friends_owe.values())
+        )
 
     response = {
         "overallYouOwe": float(overall_you_owe),
