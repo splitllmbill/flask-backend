@@ -170,6 +170,8 @@ def getNonGroupExpenses(user_id):
     expenses_shares = list(dbManager.findAll(Expense, query))
     expenses = expenses_paidBy + [expense for expense in expenses_shares if expense.id not in [exp.id for exp in expenses_paidBy]]
 
+    userNameMap = {}
+    sameName = {}
     friends_map = {}
     friends_data = []
     overall_you_owe = 0
@@ -183,12 +185,17 @@ def getNonGroupExpenses(user_id):
                     continue
                 friend_id = str(expense.paidBy.id)
             friend = dbManager.findOne(User,{"id":friend_id})
+            if friend.name not in userNameMap:
+                userNameMap[friend.name] = friend.email
+            elif friend.name in userNameMap and userNameMap[friend.name] != friend.email:
+                sameName[friend.name] = 1
             if share.userId.id != expense.paidBy.id:
                 if expense.paidBy.id == user.id:
                     if share.userId.id not in friends_map:
                         friends_map[share.userId.id] = {
                             "amount": float(share.amount),
-                            "name": friend.name
+                            "name": friend.name,
+                            "email": friend.email
                             }
                     else:
                         friends_map[share.userId.id]["amount"] += float(share.amount)
@@ -196,7 +203,8 @@ def getNonGroupExpenses(user_id):
                     if expense.paidBy.id not in friends_map:
                         friends_map[expense.paidBy.id] = {
                             "amount": -float(share.amount),
-                            "name": friend.name
+                            "name": friend.name,
+                            "email": friend.email
                             }
                     else:
                         friends_map[expense.paidBy.id]["amount"] -= float(share.amount)
@@ -207,9 +215,12 @@ def getNonGroupExpenses(user_id):
             who_owes = "user"
         else:
             overall_you_are_owed += abs(friends_map[friend_expense]["amount"])
+        name = friends_map[friend_expense]["name"]
+        if name in sameName:
+            name = name + " ( " + friends_map[friend_expense]["email"] + " )"
         friends_data.append(
             {
-                "name": friends_map[friend_expense]["name"],
+                "name": name,
                 "id": str(friend_expense),
                 "oweAmount": abs(friends_map[friend_expense]["amount"]),
                 "whoOwes": who_owes   
