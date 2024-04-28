@@ -8,28 +8,166 @@ from services import expenseService,eventService,shareService,userService, frien
 dbManager = DatabaseManager()
 
 def getUserEvents(user_id):
+    pipeline = [
+    {"$match": {"users": ObjectId(user_id)}},
+    {"$addFields": {
+        "expenses": {"$ifNull": ["$expenses", []]},  # Ensure 'expenses' field exists with a default value of an empty array
+        "users": {"$ifNull": ["$users", []]} 
+    }},
+    {"$lookup": {
+        "from": "expense",
+        "let": {"expensesIds": "$expenses"},
+        "pipeline": [
+            {"$match": {
+                "$expr": {
+                    "$in": ["$_id", "$$expensesIds"]
+                }
+            }},
+            {"$project": {
+                "_id": 1,
+                "paidBy": 1,
+                "shares": 1
+            }}
+        ],
+        "as": "eventExpenses"
+    }},
+    {"$unwind": "$eventExpenses"},
+    # Add more pipeline stages as needed to process expenses and calculate dues
+    {"$lookup": {
+        "from": "user",
+        "let": {"userIds": "$users"},
+        "pipeline": [
+            {"$match": {
+                "$expr": {
+                    "$in": ["$_id", "$$userIds"]
+                }
+            }},
+            {"$project": {
+                "_id": 1,
+                "name": 1,
+                "email": 1
+            }}
+        ],
+        "as": "eventUsers"
+    }},
     
-    events = dbManager.findAll(Event, {"users": user_id})
-    overall_you_owe = 0
-    overall_owed = 0
+    {"$group": {
+        "_id": "$_id",
+        "eventName": {"$first": "$eventName"},
+        "createdAt": {"$first": "$createdAt"},
+        "createdBy": {"$first": "$createdBy"},
+        "users": {"$first": "$users"},
+        "expenses": {"$push": "$eventExpenses"},
+        "eventUsers": {"$push": "$eventUsers"}
+    }}
+    ]
+
+    
+    events = list(dbManager.aggregate(Event, pipeline))
+    print(events)
+    eventsList = []
     overallOweAmount = 0
-    owingPerson = ""
-    events_with_dues = []
+    owingPerson = "user"
+    userMap = {}
+    sameNameDict = {}
+    sameNameList = set()
     for event in events:
-        event_id = event["id"]
-        event_dues = eventService.getEventDuesForUser(event_id, user_id)
-        event_dict = event.to_mongo().to_dict()
-        event_dict["dues"] = event_dues
-        events_with_dues.append(event_dict)
-        overall_you_owe += event_dues["totalDebt"]
-        overall_owed += event_dues["totalOwed"]
-        overallOweAmount = abs(overall_you_owe-overall_owed)
-        owingPerson = "user" if overall_you_owe >= overall_owed else "friend"
+        for userList in event["eventUsers"]:
+            for user in userList:
+                userMap[str(user["_id"])] = user
+    userName = userMap[str(user_id)]["name"]
+    print(userName)
+    for event in events:
+        eventDict = {}
+        print(list(event))
+        eventDict["id"] = str(event["_id"])
+        # print("event dict used")
+        eventDict["users"] = event["users"]
+        eventDict["eventName"] = event["eventName"]
+        eventDict["createdAt"] = str(event["createdAt"])
+        eventDict["createdBy"] = event["createdBy"]
+        eventDict["expenses"] = [str(event["_id"]) for event in event["expenses"]] 
+        eventDict["dues"] = {
+            "userName": userName,
+            "inDebtTo": [],
+            "isOwed": [],
+            "totalDebt": 0,
+            "totalOwed": 0
+        }
+        print(eventDict["expenses"])
+        dueDict = {}
+        for expense in event["expenses"]:
+            for share in expense["shares"]:
+                if userMap[str(share["userId"])]["name"] not in sameNameDict:
+                    sameNameDict[userMap[str(share["userId"])]["name"]] = userMap[str(share["userId"])]["email"]
+                else:
+                    if userMap[str(share["userId"])]["email"] != sameNameDict[userMap[str(share["userId"])]["name"]]:
+                        sameNameList.add(userMap[str(share["userId"])]["name"])
+                if str(share["userId"]) != str(expense["paidBy"]):
+                    if str(user_id) == str(expense["paidBy"]):
+                        if str(share["userId"]) not in dueDict:
+                            dueDict[str(share["userId"])] = -float(share["amount"])
+                        else:
+                            dueDict[str(share["userId"])] -= float(share["amount"])
+                    else:
+                        print("friend paid the expense")
+                        if str(share["userId"]) != str(user_id):
+                            continue
+                        if str(expense["paidBy"]) not in dueDict:
+                            dueDict[str(expense["paidBy"])] = float(share["amount"])
+                        else:
+                            dueDict[str(expense["paidBy"])] += float(share["amount"])
+        for due in dueDict:
+            name =  userMap[str(due)]["name"]
+            if name in sameNameList:
+                name = name + " ( " + userMap[str(due)]["email"] + " )"
+            if dueDict[due] < 0:
+                eventDict["dues"]["isOwed"].append({
+                    "id": str(due),
+                    "name": name,
+                    "amount": float(abs(dueDict[due]))
+                })
+                eventDict["dues"]["totalOwed"] += float(abs(dueDict[due]))
+                overallOweAmount += float(dueDict[due])
+            else:
+                eventDict["dues"]["inDebtTo"].append({
+                    "id": str(due),
+                    "name": name,
+                    "amount": float(abs(dueDict[due]))
+                })
+                eventDict["dues"]["totalDebt"] += float(abs(dueDict[due]))
+                overallOweAmount += float(dueDict[due])
+        eventsList.append(eventDict)
+    
+
+    print(toJson(eventsList))
+    print(overallOweAmount)
+    print(sameNameList)
+    if overallOweAmount < 0:
+        owingPerson = "friend"
+        overallOweAmount = abs(overallOweAmount)
+    # overallOweAmount = 0
+    # events = dbManager.findAll(Event, {"users": user_id})
+    # overall_you_owe = 0
+    # overall_owed = 0
+    # overallOweAmount = 0
+    # owingPerson = ""
+    # events_with_dues = []
+    # for event in events:
+    #     event_id = event["id"]
+    #     event_dues = eventService.getEventDuesForUser(event_id, user_id)
+    #     event_dict = event.to_mongo().to_dict()
+    #     event_dict["dues"] = event_dues
+    #     events_with_dues.append(event_dict)
+    #     overall_you_owe += event_dues["totalDebt"]
+    #     overall_owed += event_dues["totalOwed"]
+    #     overallOweAmount = abs(overall_you_owe-overall_owed)
+    #     owingPerson = "user" if overall_you_owe >= overall_owed else "friend"
 
     response = {
                 "overallOweAmount": float(overallOweAmount),
                 "owingPerson": owingPerson,
-                "events": [toJson(event) for event in events_with_dues]
+                "events": [toJson(event) for event in eventsList]
                 }
     return response
 
