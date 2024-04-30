@@ -64,7 +64,6 @@ def getUserEvents(user_id):
 
     
     events = list(dbManager.aggregate(Event, pipeline))
-    print(events)
     eventsList = []
     overallOweAmount = 0
     owingPerson = "user"
@@ -76,12 +75,9 @@ def getUserEvents(user_id):
             for user in userList:
                 userMap[str(user["_id"])] = user
     userName = userMap[str(user_id)]["name"]
-    print(userName)
     for event in events:
         eventDict = {}
-        print(list(event))
         eventDict["id"] = str(event["_id"])
-        # print("event dict used")
         eventDict["users"] = event["users"]
         eventDict["eventName"] = event["eventName"]
         eventDict["createdAt"] = str(event["createdAt"])
@@ -94,7 +90,6 @@ def getUserEvents(user_id):
             "totalDebt": 0,
             "totalOwed": 0
         }
-        print(eventDict["expenses"])
         dueDict = {}
         for expense in event["expenses"]:
             for share in expense["shares"]:
@@ -110,7 +105,6 @@ def getUserEvents(user_id):
                         else:
                             dueDict[str(share["userId"])] -= float(share["amount"])
                     else:
-                        print("friend paid the expense")
                         if str(share["userId"]) != str(user_id):
                             continue
                         if str(expense["paidBy"]) not in dueDict:
@@ -140,9 +134,6 @@ def getUserEvents(user_id):
         eventsList.append(eventDict)
     
 
-    print(toJson(eventsList))
-    print(overallOweAmount)
-    print(sameNameList)
     if overallOweAmount < 0:
         owingPerson = "friend"
         overallOweAmount = abs(overallOweAmount)
@@ -302,7 +293,6 @@ def saveEvent(user_id,request_data):
 
         # Find the elements that are in the original set but not in the modified set
         removed_elements = original_set - modified_set
-        print("noob")
         # Convert the result back to a list
         removed_elements_list = list(removed_elements)
         if event.createdBy in removed_elements_list:
