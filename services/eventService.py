@@ -146,24 +146,6 @@ def getUserEvents(user_id):
     if overallOweAmount < 0:
         owingPerson = "friend"
         overallOweAmount = abs(overallOweAmount)
-    # overallOweAmount = 0
-    # events = dbManager.findAll(Event, {"users": user_id})
-    # overall_you_owe = 0
-    # overall_owed = 0
-    # overallOweAmount = 0
-    # owingPerson = ""
-    # events_with_dues = []
-    # for event in events:
-    #     event_id = event["id"]
-    #     event_dues = eventService.getEventDuesForUser(event_id, user_id)
-    #     event_dict = event.to_mongo().to_dict()
-    #     event_dict["dues"] = event_dues
-    #     events_with_dues.append(event_dict)
-    #     overall_you_owe += event_dues["totalDebt"]
-    #     overall_owed += event_dues["totalOwed"]
-    #     overallOweAmount = abs(overall_you_owe-overall_owed)
-    #     owingPerson = "user" if overall_you_owe >= overall_owed else "friend"
-
     response = {
                 "overallOweAmount": float(overallOweAmount),
                 "owingPerson": owingPerson,
