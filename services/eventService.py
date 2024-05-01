@@ -8,7 +8,6 @@ from services import expenseService,eventService,shareService,userService, frien
 dbManager = DatabaseManager()
 
 def getUserEvents(user_id):
-    print(user_id)
     pipeline = [
     {"$match": {"users": ObjectId(user_id)}},
     {"$addFields": {

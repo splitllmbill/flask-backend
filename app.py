@@ -4,11 +4,13 @@ from pathlib import Path
 from dotenv import load_dotenv
 from routes.dbController import db_route
 from routes.llmController import llm_route
-from flask_cors import CORS
-
 
 app = Flask(__name__)
-CORS(app)
+
+@app.after_request
+def add_cache_control(response):
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return response
 
 # Load environment variables
 load_dotenv()
