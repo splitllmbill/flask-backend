@@ -8,6 +8,7 @@ from services import expenseService,eventService,shareService,userService, frien
 dbManager = DatabaseManager()
 
 def getUserEvents(user_id):
+    print(user_id)
     pipeline = [
     {"$match": {"users": ObjectId(user_id)}},
     {"$addFields": {
@@ -62,7 +63,6 @@ def getUserEvents(user_id):
     }}
     ]
 
-    
     events = list(dbManager.aggregate(Event, pipeline))
     eventsList = []
     overallOweAmount = 0
@@ -74,7 +74,8 @@ def getUserEvents(user_id):
         for userList in event["eventUsers"]:
             for user in userList:
                 userMap[str(user["_id"])] = user
-    userName = userMap[str(user_id)]["name"]
+    if len(events) != 0:
+        userName = userMap[str(user_id)]["name"]
     for event in events:
         eventDict = {}
         eventDict["id"] = str(event["_id"])
@@ -132,8 +133,6 @@ def getUserEvents(user_id):
                 eventDict["dues"]["totalDebt"] += float(abs(dueDict[due]))
                 overallOweAmount += float(dueDict[due])
         eventsList.append(eventDict)
-    
-
     if overallOweAmount < 0:
         owingPerson = "friend"
         overallOweAmount = abs(overallOweAmount)

@@ -9,7 +9,7 @@ from mongoengine.errors import NotUniqueError
 import jwt
 
 from services import expenseService,eventService,shareService, friendService, referralService, userService, verificationService, upiService, dashboardService, commonService, paymentService
-from models.common import Account, DatabaseManager,User, Referral, Verification, toJson
+from models.common import Account, DatabaseManager,User, Referral, Verification, Friends, toJson
 
 from util import generator, aes
 from util.auth import validate_jwt_token
@@ -176,6 +176,12 @@ def signup():
             user_verification.createdAt = datetime.datetime.now(datetime.timezone.utc)
             user_verification.updatedAt = datetime.datetime.now(datetime.timezone.utc)
             user_verification.save()
+
+            # save friends info
+            user_friends = Friends()
+            user_friends.userId = new_user.id
+            user_friends.friends = []
+            user_friends.save()
 
             del new_user.createdAt, new_user.updatedAt, new_user.password, new_user.account
             return Response(response=json.dumps(toJson(new_user)), status=201, mimetype="application/json")
