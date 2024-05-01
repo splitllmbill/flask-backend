@@ -56,8 +56,9 @@ def createExpense(userId, requestData):
         shareTotal =shareTotal+share["amount"]
         new_shares.append(Share(**share))
 
-    if requestData['type'] != "normal" and shareTotal != requestData["amount"]:
-         raise ValueError("Expense amount not equal to sum of shares")
+    if requestData['type'] != "normal" and shareTotal != requestData["amount"] and abs(shareTotal-requestData['amount']) > 1:
+        print(shareTotal,requestData['amount'])
+        raise ValueError("Expense amount not equal to sum of shares")
     del requestData['shares']
     new_expense = Expense(**requestData)
     new_expense.shares = new_shares
