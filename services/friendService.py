@@ -31,7 +31,13 @@ def getFriendDetails(user_id, friend_id):
         total_owe_amount = 0
         total_friend_owe = 0
         total_user_owe = 0
-
+        friend_json = {
+            "uuid": friend.uuid,
+            "name": friend.name,
+            "overallOweAmount": float(0),
+            "overallWhoOwes": "user",
+            "expenses": expenses_list
+        }
         for expense in expenses:
             user_owe = 0
             friend_owe = 0

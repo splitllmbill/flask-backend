@@ -9,60 +9,56 @@ dbManager = DatabaseManager()
 
 def getUserEvents(user_id):
     pipeline = [
-    {"$match": {"users": ObjectId(user_id)}},
-    {"$addFields": {
-        "expenses": {"$ifNull": ["$expenses", []]},  # Ensure 'expenses' field exists with a default value of an empty array
-        "users": {"$ifNull": ["$users", []]} 
-    }},
-    {"$lookup": {
-        "from": "expense",
-        "let": {"expensesIds": "$expenses"},
-        "pipeline": [
-            {"$match": {
-                "$expr": {
-                    "$in": ["$_id", "$$expensesIds"]
-                }
-            }},
-            {"$project": {
-                "_id": 1,
-                "paidBy": 1,
-                "shares": 1
-            }}
-        ],
-        "as": "eventExpenses"
-    }},
-    {"$unwind": "$eventExpenses"},
-    # Add more pipeline stages as needed to process expenses and calculate dues
-    {"$lookup": {
-        "from": "user",
-        "let": {"userIds": "$users"},
-        "pipeline": [
-            {"$match": {
-                "$expr": {
-                    "$in": ["$_id", "$$userIds"]
-                }
-            }},
-            {"$project": {
-                "_id": 1,
-                "name": 1,
-                "email": 1
-            }}
-        ],
-        "as": "eventUsers"
-    }},
-    
-    {"$group": {
-        "_id": "$_id",
-        "eventName": {"$first": "$eventName"},
-        "createdAt": {"$first": "$createdAt"},
-        "createdBy": {"$first": "$createdBy"},
-        "users": {"$first": "$users"},
-        "expenses": {"$push": "$eventExpenses"},
-        "eventUsers": {"$push": "$eventUsers"}
-    }}
+        {"$match": {"users": ObjectId(user_id)}},
+        {"$addFields": {
+            "expenses": {"$ifNull": ["$expenses", []]},
+            "users": {"$ifNull": ["$users", []]} 
+        }},
+        {"$lookup": {
+            "from": "expense",
+            "let": {"expensesIds": "$expenses"},
+            "pipeline": [
+                {"$match": {
+                    "$expr": {
+                        "$in": ["$_id", "$$expensesIds"]
+                    }
+                }},
+                {"$project": {
+                    "_id": 1,
+                    "paidBy": 1,
+                    "shares": 1
+                }}
+            ],
+            "as": "eventExpenses"
+        }},
+        {"$lookup": {
+            "from": "user",
+            "let": {"userIds": "$users"},
+            "pipeline": [
+                {"$match": {
+                    "$expr": {
+                        "$in": ["$_id", "$$userIds"]
+                    }
+                }},
+                {"$project": {
+                    "_id": 1,
+                    "name": 1,
+                    "email": 1
+                }}
+            ],
+            "as": "eventUsers"
+        }},
+        {"$group": {
+            "_id": "$_id",
+            "eventName": {"$first": "$eventName"},
+            "createdAt": {"$first": "$createdAt"},
+            "createdBy": {"$first": "$createdBy"},
+            "users": {"$first": "$users"},
+            "expenses": {"$first": "$eventExpenses"},
+            "eventUsers": {"$push": "$eventUsers"}
+        }}
     ]
 
-    
     events = list(dbManager.aggregate(Event, pipeline))
     eventsList = []
     overallOweAmount = 0
@@ -74,7 +70,8 @@ def getUserEvents(user_id):
         for userList in event["eventUsers"]:
             for user in userList:
                 userMap[str(user["_id"])] = user
-    userName = userMap[str(user_id)]["name"]
+    if len(events) != 0:
+        userName = userMap[str(user_id)]["name"]
     for event in events:
         eventDict = {}
         eventDict["id"] = str(event["_id"])
@@ -132,8 +129,6 @@ def getUserEvents(user_id):
                 eventDict["dues"]["totalDebt"] += float(abs(dueDict[due]))
                 overallOweAmount += float(dueDict[due])
         eventsList.append(eventDict)
-    
-
     if overallOweAmount < 0:
         owingPerson = "friend"
         overallOweAmount = abs(overallOweAmount)

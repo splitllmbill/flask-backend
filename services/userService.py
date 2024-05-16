@@ -124,7 +124,6 @@ def forgotPassword(requestData):
     
     return {
         "message": "Password reset successfully. Please check your email for the new password.",
-        "new_password": new_password
     }
 
 def generate_random_password(length=12):
