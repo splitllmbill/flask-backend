@@ -3,6 +3,7 @@ from models.common import DatabaseManager, Event, Expense, Friends, User
 from services import expenseService
 from datetime import datetime as dt
 from collections import defaultdict
+from mongoengine.queryset.visitor import Q
 
 dbManager = DatabaseManager()
 
@@ -167,14 +168,15 @@ def get_friend_list(user_id):
     return response
 
 def getNonGroupExpenses(user_id):
-    user = dbManager.findOne(User,{"id":user_id})
+    user = dbManager.findOne(User, {"id": user_id})
     if not user:
         return {"error": "User not found"}
-    
-    expenses_paidBy = list(dbManager.findAll(Expense, {"type": "friend", "paidBy": user_id}))
-    query = {"type": "friend", "shares__userId": user_id}
-    expenses_shares = list(dbManager.findAll(Expense, query))
-    expenses = expenses_paidBy + [expense for expense in expenses_shares if expense.id not in [exp.id for exp in expenses_paidBy]]
+
+    # Use .objects(Q(...)) directly instead of dbManager
+    expenses = list(Expense.objects(
+        Q(type="friend") & (Q(shares__userId=user.id) | Q(payShares__paidBy=user.id))
+    ))
+
 
     userNameMap = {}
     sameName = {}
@@ -182,65 +184,79 @@ def getNonGroupExpenses(user_id):
     friends_data = []
     overall_you_owe = 0
     overall_you_are_owed = 0
-    
+
     for expense in expenses:
-        for share in expense.shares:
-            friend_id = str(share.userId.id)
-            if share.userId.id == user.id:
-                if expense.paidBy.id == user.id:
+        shares = expense.shares
+        payShares = expense.payShares
+        total_paid = sum(float(p.payAmount) for p in payShares) if payShares else 0
+
+        for share in shares:
+            share_user_id = str(share.userId.id)
+            share_amount = float(share.amount)
+
+            for payShare in payShares:
+                payer_id = str(payShare.paidBy.id)
+                pay_amount = float(payShare.payAmount)
+
+                if total_paid == 0 or payer_id == share_user_id:
                     continue
-                friend_id = str(expense.paidBy.id)
-            friend = dbManager.findOne(User,{"id":friend_id})
-            if friend.name not in userNameMap:
-                userNameMap[friend.name] = friend.email
-            elif friend.name in userNameMap and userNameMap[friend.name] != friend.email:
-                sameName[friend.name] = 1
-            if share.userId.id != expense.paidBy.id:
-                if expense.paidBy.id == user.id:
-                    if share.userId.id not in friends_map:
-                        friends_map[share.userId.id] = {
-                            "amount": float(share.amount),
-                            "name": friend.name,
-                            "email": friend.email
-                            }
-                    else:
-                        friends_map[share.userId.id]["amount"] += float(share.amount)
+
+                proportional_amount = share_amount * (pay_amount / total_paid)
+
+                # Determine friend_id (the "other" person in the transaction)
+                if share_user_id == str(user.id):
+                    # I owe someone
+                    friend_id = payer_id
+                    delta = -proportional_amount
+                elif payer_id == str(user.id):
+                    # Someone owes me
+                    friend_id = share_user_id
+                    delta = proportional_amount
                 else:
-                    if expense.paidBy.id not in friends_map:
-                        friends_map[expense.paidBy.id] = {
-                            "amount": -float(share.amount),
-                            "name": friend.name,
-                            "email": friend.email
-                            }
-                    else:
-                        friends_map[expense.paidBy.id]["amount"] -= float(share.amount)
-    for friend_expense in friends_map:
-        who_owes = "friend"
-        if friends_map[friend_expense]["amount"] < 0:
-            overall_you_owe += abs(friends_map[friend_expense]["amount"])
-            who_owes = "user"
-        else:
-            overall_you_are_owed += abs(friends_map[friend_expense]["amount"])
-        name = friends_map[friend_expense]["name"]
+                    continue  # Skip if user not involved in this share-pay pair
+
+                friend = dbManager.findOne(User, {"id": friend_id})
+                if friend.name not in userNameMap:
+                    userNameMap[friend.name] = friend.email
+                elif userNameMap[friend.name] != friend.email:
+                    sameName[friend.name] = 1
+
+                if friend_id not in friends_map:
+                    friends_map[friend_id] = {
+                        "amount": delta,
+                        "name": friend.name,
+                        "email": friend.email
+                    }
+                else:
+                    friends_map[friend_id]["amount"] += delta
+
+    # Format response
+    for friend_id in friends_map:
+        data = friends_map[friend_id]
+        name = data["name"]
         if name in sameName:
-            name = name + " ( " + friends_map[friend_expense]["email"] + " )"
-        friends_data.append(
-            {
-                "name": name,
-                "id": str(friend_expense),
-                "oweAmount": abs(friends_map[friend_expense]["amount"]),
-                "whoOwes": who_owes   
-            }
-        )
+            name = f"{name} ( {data['email']} )"
+
+        who_owes = "friend" if data["amount"] > 0 else "user"
+        if data["amount"] < 0:
+            overall_you_owe += abs(data["amount"])
+        else:
+            overall_you_are_owed += abs(data["amount"])
+
+        friends_data.append({
+            "name": name,
+            "id": str(friend_id),
+            "oweAmount": abs(data["amount"]),
+            "whoOwes": who_owes
+        })
 
     response = {
-        "overallYouOwe": float(overall_you_owe),
-        "overallYouAreOwed": float(overall_you_are_owed),
+        "overallYouOwe": float(round(overall_you_owe, 2)),
+        "overallYouAreOwed": float(round(overall_you_are_owed, 2)),
         "friendsList": friends_data
     }
 
     return response
-
 
 def settleUpFriendDues(user_id,friend_id):
     #find events where both user and friend and user are present

@@ -19,120 +19,129 @@ def getDateTime(requestData):
     return [start_dt,end_dt]
 
 def groupOweDetails(userId):
+    userId = str(userId)  # ensure consistent string comparison
+
     pipeline = [
         {
             "$match": {
-                "$or": [
-                    {
-                        "type": {"$in": ["group", "friend", "settle"]},
-                        "shares.userId": ObjectId(userId)
-                    },
-                    {
-                        "type": {"$in": ["group", "friend", "settle"]},
-                        "paidBy": ObjectId(userId)
-                    }
-                ]
+                "type": {"$in": ["group", "friend", "settle"]},
+                "shares.userId": ObjectId(userId)
             }
         },
         {
             "$project": {
-                "paidBy": 1,
-                "type": 1,
-                "amount": 1,
+                "payShares": 1,
                 "shares": 1,
+                "type": 1
             }
         }
     ]
-    total_owed_amount = 0
-    total_owe_amount = 0
-    result = list(dbManager.aggregate(Expense,pipeline))
+
+    result = list(dbManager.aggregate(Expense, pipeline))
+
+    total_owed_amount = 0  # others owe me
+    total_owe_amount = 0   # I owe others
+
     for expense in result:
-        has_share = False
-        for share in expense['shares']:
-            if str(share['userId']) == userId:
-                has_share = True
-                if expense['type'] != 'settle':
-                    if str(expense['paidBy']) == userId:
-                        total_owed_amount += expense['amount'] - share['amount']
-                    else:
-                        total_owe_amount += share['amount']
-                if str(expense['paidBy']) != userId and expense['type'] == 'settle':
-                    total_owed_amount -= share['amount']
-        if not has_share and str(expense['paidBy']) == userId:
-            if expense['type'] != 'settle':
-                total_owed_amount += expense['amount']
-            else:
-                total_owe_amount -= expense['amount']
-    return (total_owe_amount,total_owed_amount)
+        shares = expense.get("shares", [])
+        payShares = expense.get("payShares", [])
+        total_paid = sum(float(p["payAmount"]) for p in payShares) if payShares else 0
+
+        for share in shares:
+            participant_id = str(share["userId"])
+            share_amount = float(share["amount"])
+
+            # Distribute this share among all payers proportionally
+            for payShare in payShares:
+                payer_id = str(payShare["paidBy"])
+                pay_amount = float(payShare["payAmount"])
+
+                if total_paid == 0:
+                    continue
+
+                proportional_amount = share_amount * (pay_amount / total_paid)
+
+                # Skip self-payment
+                if payer_id == participant_id:
+                    continue
+
+                if participant_id == userId:
+                    # I owe this payer
+                    total_owe_amount += proportional_amount
+                elif payer_id == userId:
+                    # Someone owes me
+                    total_owed_amount += proportional_amount
+
+    return (round(total_owe_amount, 2), round(total_owed_amount, 2))
+
     
 
 def getSummaryForHomepage(userId, requestData):
-    query={"id":ObjectId(userId)}
-    user = dbManager.findOne(User,query)
+    query = {"id": ObjectId(userId)}
+    user = dbManager.findOne(User, query)
     total_share = 0
     dateRange = getDateTime(requestData)
+
+    # Aggregate personal expenses where user paid (from payShares)
     personal_expenses_pipeline = [
         {
             "$match": {
                 "type": "normal",
-                "paidBy": ObjectId(userId),
-                "date": { 
+                "payShares.paidBy": ObjectId(userId),
+                "date": {
                     "$gte": dateRange[0],
                     "$lte": dateRange[1]
                 }
             }
         },
         {
+            "$unwind": "$payShares"
+        },
+        {
+            "$match": {
+                "payShares.paidBy": ObjectId(userId)
+            }
+        },
+        {
             "$group": {
-                "_id": "$paidBy",
-                "totalAmount": { "$sum": "$amount" }
+                "_id": "$payShares.paidBy",
+                "totalAmount": { "$sum": "$payShares.payAmount" }
             }
         }
     ]
-    result = list(dbManager.aggregate(Expense,personal_expenses_pipeline))
-    if len(result) != 0:
-        personal_expenses = float(result[0]['totalAmount'])
-    else:
-        personal_expenses = float(0)
+
+    result = list(dbManager.aggregate(Expense, personal_expenses_pipeline))
+    personal_expenses = float(result[0]['totalAmount']) if result else 0.0
+
+    # Group/friend/settle expenses where the user is involved
     other_expenses_pipeline = [
         {
             "$match": {
-                "$or": [
-                    {
-                        "type": {"$in": ["group", "friend", "settle"]},
-                        "date": { 
-                            "$gte": dateRange[0],
-                            "$lte": dateRange[1]
-                        },
-                        "shares.userId": ObjectId(userId)
-                    },
-                    {
-                        "type": {"$in": ["group", "friend", "settle"]},
-                        "date": { 
-                            "$gte": dateRange[0],
-                            "$lte": dateRange[1]
-                        },
-                        "paidBy": ObjectId(userId)
-                    }
-                ]
+                "type": {"$in": ["group", "friend", "settle"]},
+                "date": {
+                    "$gte": dateRange[0],
+                    "$lte": dateRange[1]
+                },
+                "shares.userId": ObjectId(userId)
             }
         },
         {
             "$project": {
-                "paidBy": 1,
+                "payShares": 1,
                 "type": 1,
-                "amount": 1,
                 "shares": 1,
             }
         }
     ]
-    result = list(dbManager.aggregate(Expense,other_expenses_pipeline))
+
+    result = list(dbManager.aggregate(Expense, other_expenses_pipeline))
     for expense in result:
         for share in expense['shares']:
-            if str(share['userId']) == userId:
-                if expense['type'] != 'settle':
-                    total_share += float(share['amount'])
+            if str(share['userId']) == userId and expense['type'] != 'settle':
+                total_share += float(share['amount'])
+
     total_owe_amount, total_owed_amount = groupOweDetails(userId)
+
     return {
         'group_expenses': float(total_share),
         'personal_expenses': personal_expenses,
@@ -140,6 +149,7 @@ def getSummaryForHomepage(userId, requestData):
         'total_owed_to_you': float(total_owed_amount),
         'username': user.name
     }
+
     
 def getDashboardChart(userId, requestData):
     dateRange = getDateTime(requestData)

@@ -1,4 +1,4 @@
-from models.common import DatabaseManager,Expense,Event, Share, User, toJson
+from models.common import DatabaseManager,Expense,Event, Share, User, toJson,PayShare
 from datetime import datetime as dt
 from bson import ObjectId
 from services import expenseService, shareService
@@ -47,7 +47,7 @@ def getExpenseById(expenseId, userId):
 def createExpense(userId, requestData):
     if requestData["expenseName"] == "" or requestData["category"] == "" or requestData["amount"] == 0:
         return {"message": "There are some missing/invalid fields. Please check your input and try again!", "success": "false"}
-    if requestData["type"] != "normal" and (requestData["paidBy"] == "" or len(requestData["shares"]) == 0):
+    if requestData["type"] != "normal" and (len(requestData["payShares"]) == 0 or len(requestData["shares"]) == 0):
         return {"message": "There are some missing/invalid fields. Please check your input and try again!", "success": "false"}
     shares = requestData['shares']
     shareTotal=0
@@ -55,6 +55,9 @@ def createExpense(userId, requestData):
     for share in shares:
         shareTotal =shareTotal+share["amount"]
         new_shares.append(Share(**share))
+    new_payShares-[]
+    for payShare in payShares:
+        new_payShares.append(PayShare(**payShare))
 
     if requestData['type'] != "normal" and shareTotal != requestData["amount"] and abs(shareTotal-requestData['amount']) > 1:
         print(shareTotal,requestData['amount'])
@@ -62,11 +65,8 @@ def createExpense(userId, requestData):
     del requestData['shares']
     new_expense = Expense(**requestData)
     new_expense.shares = new_shares
+    new_expense.payShares = new_payShares
     new_expense.type=requestData["type"]
-    if requestData["type"] == "normal":
-        new_expense["paidBy"] = ObjectId(userId) 
-    else:
-        new_expense["paidBy"] = ObjectId(requestData["paidBy"])
     new_expense.createdBy = ObjectId(userId)
     new_expense.updatedBy = ObjectId(userId)
     new_expense.createdAt = dt.utcnow()
@@ -99,9 +99,12 @@ def updateExpense(userId, expenseId, requestData):
     expense = dbManager.findOne(Expense, query)
     if expense is None:
         return False
-    requestData['paidBy'] = ObjectId(requestData['paidBy'])
     requestData['updatedAt'] = dt.utcnow()
     requestData['updatedBy'] = ObjectId(userId)
+    if 'payShares' in requestData:
+        for payShare in requestData['payShares']:
+            new_payShares.append(PayShare(**payShare))
+        expense.payShares = new_payShares
     if 'shares' in requestData:
         shares_data = requestData.pop('shares')
         shares = []

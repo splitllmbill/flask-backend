@@ -165,11 +165,16 @@ class Share(EmbeddedDocument):
     userId = ReferenceField('User')
     eventId = ReferenceField('Event')
 
+class PayShare(EmbeddedDocument):
+    paidBy = ReferenceField('User',required=True)
+    payAmount = DecimalField(required=True)
+
 class Expense(Document):
     expenseName = StringField(required=True)
-    amount = DecimalField(required=True)
+    amount = DecimalField()
     type = StringField(required=True)
-    paidBy = ReferenceField('User',required=True)
+    paidBy = ReferenceField('User')
+    payShares = ListField(EmbeddedDocumentField(PayShare))
     shares = ListField(EmbeddedDocumentField(Share))
     date = DateTimeField(required=True)
     createdAt = DateTimeField(required=True)
@@ -178,6 +183,7 @@ class Expense(Document):
     updatedBy = ReferenceField('User',required=True)
     category = StringField(required=False)   
     eventId = ReferenceField('Event',required=False)
+
 
 class Friends(Document):
     userId = ReferenceField('User')
@@ -205,3 +211,6 @@ class PaymentPage(Document):
     note = StringField(required=True)
     createdAt = DateTimeField(required=True)
     expiryAt = DateTimeField(required=True)
+
+
+
