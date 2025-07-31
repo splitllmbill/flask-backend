@@ -45,7 +45,7 @@ def groupOweDetails(userId):
     for expense in result:
         shares = expense.get("shares", [])
         payShares = expense.get("payShares", [])
-        total_paid = sum(float(p["payAmount"]) for p in payShares) if payShares else 0
+        total_paid = sum(float(p["amount"]) for p in payShares) if payShares else 0
 
         for share in shares:
             participant_id = str(share["userId"])
@@ -53,8 +53,8 @@ def groupOweDetails(userId):
 
             # Distribute this share among all payers proportionally
             for payShare in payShares:
-                payer_id = str(payShare["paidBy"])
-                pay_amount = float(payShare["payAmount"])
+                payer_id = str(payShare["userId"])
+                pay_amount = float(payShare["amount"])
 
                 if total_paid == 0:
                     continue
@@ -87,7 +87,7 @@ def getSummaryForHomepage(userId, requestData):
         {
             "$match": {
                 "type": "normal",
-                "payShares.paidBy": ObjectId(userId),
+                "payShares.userId": ObjectId(userId),
                 "date": {
                     "$gte": dateRange[0],
                     "$lte": dateRange[1]
@@ -99,12 +99,12 @@ def getSummaryForHomepage(userId, requestData):
         },
         {
             "$match": {
-                "payShares.paidBy": ObjectId(userId)
+                "payShares.userId": ObjectId(userId)
             }
         },
         {
             "$group": {
-                "_id": "$payShares.paidBy",
+                "_id": "$payShares.userId",
                 "totalAmount": { "$sum": "$payShares.payAmount" }
             }
         }
@@ -153,11 +153,11 @@ def getSummaryForHomepage(userId, requestData):
     
 def getDashboardChart(userId, requestData):
     dateRange = getDateTime(requestData)
+    
     chart_data_pipelines = [
         {
             "$match": {
                 "type": "normal",
-                "paidBy": ObjectId(userId),
                 "date": { 
                     "$gte": dateRange[0],
                     "$lte": dateRange[1]
@@ -165,14 +165,21 @@ def getDashboardChart(userId, requestData):
             }
         },
         {
+            "$unwind": "$payShares"
+        },
+        {
+            "$match": {
+                "payShares.userId": ObjectId(userId)
+            }
+        },
+        {
             "$group": {
                 "_id": None,
-                "totalCost": {"$sum": "$amount"},
-                "categories": {"$addToSet": "$category"},
+                "totalCost": {"$sum": "$payShares.amount"},
                 "categoryData": {
                     "$push": {
                         "category": "$category",
-                        "cost": "$amount"
+                        "cost": "$payShares.amount"
                     }
                 }
             }
@@ -207,6 +214,7 @@ def getDashboardChart(userId, requestData):
             }
         }
     ]
-    result = list(dbManager.aggregate(Expense,chart_data_pipelines))
+    
+    result = list(dbManager.aggregate(Expense, chart_data_pipelines))
     chart_list = [{key: value for key, value in entry.items() if key != '_id'} for entry in result]
     return chart_list

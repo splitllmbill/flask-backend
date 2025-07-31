@@ -1,31 +1,30 @@
-from mongoengine import connect, Document, EmbeddedDocument, StringField, DecimalField, ReferenceField, ListField, EmbeddedDocumentField, DateTimeField
-from models.common import Expense, PayShare, User  # Adjust import based on your project structure
+from pymongo import MongoClient
+from bson import ObjectId
 from dotenv import load_dotenv
 import os
 
-load_dotenv()  # Load environment variables if needed
-connect(
-    db=os.getenv('DB_NAME'),
-    host=os.getenv('DB_URL')
-) # Adjust your DB name and connection details
+load_dotenv()
 
-# Run migration
-for expense in Expense.objects():
-    if expense.paidBy and expense.amount:
-        # Create new PayShare
-        new_pay_share = PayShare(
-            paidBy=expense.paidBy,
-            payAmount=expense.amount
-        )
+client = MongoClient(os.getenv("DB_URL"))
+db = client[os.getenv("DB_NAME")]
 
-        # Append to payShares list (create if doesn't exist)
-        expense.payShares = [new_pay_share]
+expenses = db.expense.find({
+    "paidBy": {"$exists": True},
+    "amount": {"$exists": True}
+})
 
-        # Remove old fields
-        expense.amount = None
-        expense.paidBy = None
-
-        # Save changes
-        expense.save()
+for expense in expenses:
+    expense_id = expense["_id"]
+    pay_share = {
+        "userId": expense["paidBy"],
+        "amount": expense["amount"]
+    }
+    db.expense.update_one(
+        {"_id": expense_id},
+        {
+            "$set": {"payShares": [pay_share]},
+            "$unset": {"paidBy": "", "amount": ""}
+        }
+    )
 
 print("Migration completed!")

@@ -166,14 +166,13 @@ class Share(EmbeddedDocument):
     eventId = ReferenceField('Event')
 
 class PayShare(EmbeddedDocument):
-    paidBy = ReferenceField('User',required=True)
-    payAmount = DecimalField(required=True)
+    userId = ReferenceField('User',required=True)
+    amount = DecimalField(required=True)
 
 class Expense(Document):
     expenseName = StringField(required=True)
     amount = DecimalField()
     type = StringField(required=True)
-    paidBy = ReferenceField('User')
     payShares = ListField(EmbeddedDocumentField(PayShare))
     shares = ListField(EmbeddedDocumentField(Share))
     date = DateTimeField(required=True)

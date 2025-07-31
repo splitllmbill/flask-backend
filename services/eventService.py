@@ -67,15 +67,16 @@ def getUserEvents(user_id):
     sameNameDict = {}
     sameNameList = set()
 
+    # Build userMap
     for event in events:
         for userList in event["eventUsers"]:
             for user in userList:
                 userMap[str(user["_id"])] = user
 
-    if len(events) != 0:
-        userName = userMap[str(user_id)]["name"]
+    userName = userMap.get(str(user_id), {}).get("name", "You")
 
     for event in events:
+        print(event.get("_id"))
         eventDict = {
             "id": str(event["_id"]),
             "users": event["users"],
@@ -95,67 +96,65 @@ def getUserEvents(user_id):
         dueDict = {}
 
         for expense in event["expenses"]:
+            print(expense.get("_id"))
             shares = expense.get("shares", [])
             payShares = expense.get("payShares", [])
-            total_paid = sum(float(ps["payAmount"]) for ps in payShares) if payShares else 0
+            print(payShares)
+            total_paid = sum(float(ps["amount"]) for ps in payShares) if payShares else 0
 
             for share in shares:
                 participant_id = str(share["userId"])
                 share_amount = float(share["amount"])
 
-                # Distribute this share among all payers
+                # Handle sameName detection
+                name = userMap.get(participant_id, {}).get("name", "")
+                email = userMap.get(participant_id, {}).get("email", "")
+                if name:
+                    if name not in sameNameDict:
+                        sameNameDict[name] = email
+                    elif email != sameNameDict[name]:
+                        sameNameList.add(name)
+
+                # Skip if self-paying
                 for payShare in payShares:
-                    payer_id = str(payShare["paidBy"])
-                    payer_amount = float(payShare["payAmount"])
+                    payer_id = str(payShare["userId"])
+                    payer_amount = float(payShare["amount"])
                     if total_paid == 0:
                         continue
 
                     proportional_share = share_amount * (payer_amount / total_paid)
 
-                    # Handle same name logic
-                    name = userMap[participant_id]["name"]
-                    if name not in sameNameDict:
-                        sameNameDict[name] = userMap[participant_id]["email"]
-                    elif userMap[participant_id]["email"] != sameNameDict[name]:
-                        sameNameList.add(name)
-
                     if participant_id == payer_id:
-                        continue  # Skip self-payment
+                        continue
 
                     if participant_id == str(user_id):
-                        # I owe others
-                        if payer_id not in dueDict:
-                            dueDict[payer_id] = 0.0
-                        dueDict[payer_id] += proportional_share
+                        dueDict[payer_id] = dueDict.get(payer_id, 0.0) + proportional_share
                     elif payer_id == str(user_id):
-                        # Others owe me
-                        if participant_id not in dueDict:
-                            dueDict[participant_id] = 0.0
-                        dueDict[participant_id] -= proportional_share
+                        dueDict[participant_id] = dueDict.get(participant_id, 0.0) - proportional_share
 
-        for due in dueDict:
-            name = userMap[str(due)]["name"]
+        for due_id, amount in dueDict.items():
+            user_data = userMap.get(due_id, {})
+            name = user_data.get("name", "Unknown")
             if name in sameNameList:
-                name = f"{name} ( {userMap[str(due)]['email']} )"
+                name += f" ( {user_data.get('email', '')} )"
+            abs_amount = float(abs(amount))
 
-            amount = float(abs(dueDict[due]))
-
-            if dueDict[due] < 0:
+            if amount < 0:
                 eventDict["dues"]["isOwed"].append({
-                    "id": str(due),
+                    "id": str(due_id),
                     "name": name,
-                    "amount": amount
+                    "amount": abs_amount
                 })
-                eventDict["dues"]["totalOwed"] += amount
-                overallOweAmount += dueDict[due]
+                eventDict["dues"]["totalOwed"] += abs_amount
+                overallOweAmount += amount
             else:
                 eventDict["dues"]["inDebtTo"].append({
-                    "id": str(due),
+                    "id": str(due_id),
                     "name": name,
-                    "amount": amount
+                    "amount": abs_amount
                 })
-                eventDict["dues"]["totalDebt"] += amount
-                overallOweAmount += dueDict[due]
+                eventDict["dues"]["totalDebt"] += abs_amount
+                overallOweAmount += amount
 
         eventsList.append(eventDict)
 
@@ -191,7 +190,7 @@ def getEventDues(event_id):
             payShares = expense.payShares  # Who paid how much
 
             for pay_share in payShares:
-                payer_id = str(pay_share.paidBy.id)
+                payer_id = str(pay_share.userId.id)
 
                 for share in shares:
                     share_amount = float(share.amount)
@@ -207,8 +206,8 @@ def getEventDues(event_id):
                         amounts_owed[participant_id][payer_id] = 0.0
 
                     # Divide share amount proportionally across payShares
-                    total_paid = sum(float(ps.payAmount) for ps in payShares)
-                    payer_ratio = float(pay_share.payAmount) / total_paid if total_paid != 0 else 0
+                    total_paid = sum(float(ps.amount) for ps in payShares)
+                    payer_ratio = float(pay_share.amount) / total_paid if total_paid != 0 else 0
                     proportional_share = share_amount * payer_ratio
 
                     amounts_owed[participant_id][payer_id] += proportional_share
@@ -333,41 +332,40 @@ def deleteEvent(event_id):
     return {"message":'Successfully deleted event', "success":"true"}
 
                
-def saveEvent(user_id,request_data):
+def saveEvent(user_id, request_data):
     new_event = Event(**request_data)
-    if "id" in request_data.keys():
-        event=getEventByID(request_data['id'])
-        original_set = set([str(user['id']) for user in event.users])
+    
+    if "id" in request_data:
+        event = getEventByID(request_data['id'])
+        original_set = set(str(user['id']) for user in event.users)
         modified_set = set(new_event.users)
 
-        # Find the elements that are in the original set but not in the modified set
         removed_elements = original_set - modified_set
-        # Convert the result back to a list
-        removed_elements_list = list(removed_elements)
-        print("hi")
-        if event.createdBy in removed_elements_list:
-            print("hi3")
-            raise Exception("cannot remove event creator")   
-        print("noob:",len(event.expenses)) 
+
+        if str(event.createdBy) in removed_elements:
+            raise Exception("Cannot remove event creator")
+        
         for expense in event.expenses:
-            print(expense)
-            print("hi4")
-            if expense.paidBy.id in removed_elements_list:
-                print("hi2")
-                raise Exception("user present in expenses")
+            # Check payShares
+            for pay_share in expense.payShares:
+                if str(pay_share.userId.id) in removed_elements:
+                    raise Exception("User present in payShares")
+            
+            # Check shares
             for share in expense.shares:
-                if share.userId.id in removed_elements_list:
-                    raise Exception("user present in shares")
-        print("wow")
-        new_event.updatedBy=ObjectId(user_id)
-        new_event.updatedAt= dt.utcnow()
+                if str(share.userId.id) in removed_elements:
+                    raise Exception("User present in shares")
+        
+        new_event.updatedBy = ObjectId(user_id)
+        new_event.updatedAt = dt.utcnow()
     else:
-        new_event.createdBy=ObjectId(user_id)
-        new_event.createdAt= dt.utcnow()
-    
+        new_event.createdBy = ObjectId(user_id)
+        new_event.createdAt = dt.utcnow()
+
+    # Add any new friends
     for user in new_event.users:
         if user.id != ObjectId(user_id):  
-            friendService.add_friend(user_id, { "friendCode": user.uuid})
+            friendService.add_friend(user_id, {"friendCode": user.uuid})
 
     new_event.save()
     return new_event
