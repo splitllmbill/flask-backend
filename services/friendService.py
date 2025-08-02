@@ -3,12 +3,15 @@ from models.common import DatabaseManager, Event, Expense, Friends, User
 from services import expenseService
 from datetime import datetime as dt
 from collections import defaultdict
+from mongoengine.queryset.visitor import Q
 
 dbManager = DatabaseManager()
 
 def getFriendDetails(user_id, friend_id):
-    friend = dbManager.findOne(User,{"id":friend_id})
-    user = dbManager.findOne(User,{"id":user_id})
+    friend = dbManager.findOne(User, {"id": friend_id})
+    user = dbManager.findOne(User, {"id": user_id})
+
+    # Check if they are friends
     pipeline = [
         {
             "$match": {
@@ -21,31 +24,51 @@ def getFriendDetails(user_id, friend_id):
             }
         }
     ]
-    isFriend = list(dbManager.aggregate(Friends,pipeline))
+    isFriend = list(dbManager.aggregate(Friends, pipeline))
     if len(isFriend) == 0:
         return None
 
     if friend and user:
-        expenses =dbManager.findAll(Expense,{"paidBy__in":[friend,user] ,"type__in":["group","friend","settle"]})
+
+    
+        expenses = Expense.objects(
+            Q(type__in=["group", "friend", "settle"]) & (
+                Q(payShares__userId=friend.id) | Q(payShares__userId=user.id)
+            )
+        )
+
+
+
         expenses_list = []
-        total_owe_amount = 0
         total_friend_owe = 0
         total_user_owe = 0
-        friend_json = {
-            "uuid": friend.uuid,
-            "name": friend.name,
-            "overallOweAmount": float(0),
-            "overallWhoOwes": "user",
-            "expenses": expenses_list
-        }
+
         for expense in expenses:
             user_owe = 0
             friend_owe = 0
+
+            # Calculate total paid by each
+            user_paid = sum(
+                float(ps.amount) for ps in expense.payShares if ps.userId == user
+            )
+            friend_paid = sum(
+                float(ps.amount) for ps in expense.payShares if ps.userId == friend
+            )
+            total_paid = user_paid + friend_paid
+
             for share in expense.shares:
-                if share.userId == user and expense.paidBy == friend:
-                    user_owe += share.amount
-                elif share.userId == friend and expense.paidBy == user:
-                    friend_owe += share.amount
+                share_user_id = str(share.userId.id)
+
+                if share_user_id not in [str(user.id), str(friend.id)]:
+                    continue  # ignore other users
+
+                if total_paid == 0:
+                    continue  # skip broken records
+
+                if share_user_id == str(user.id):
+                    user_owe += float(share.amount) * (friend_paid / total_paid)
+                elif share_user_id == str(friend.id):
+                    friend_owe += float(share.amount) * (user_paid / total_paid)
 
             if user_owe > 0 or friend_owe > 0:
                 owe_amount = abs(friend_owe - user_owe)
@@ -55,8 +78,8 @@ def getFriendDetails(user_id, friend_id):
                     "expenseDate": expense.createdAt.isoformat(),
                     "expenseName": expense.expenseName,
                     "expenseId": str(expense.id),
-                    "eventId": str(expense.eventId.id) if expense.eventId else str(expense.eventId),
-                    "eventName": str(expense.eventId.eventName) if expense.eventId else str(expense.eventId),
+                    "eventId": str(expense.eventId.id) if expense.eventId else None,
+                    "eventName": str(expense.eventId.eventName) if expense.eventId else None,
                     "category": expense.category,
                     "user_summary": {
                         "oweAmount": float(owe_amount),
@@ -64,6 +87,7 @@ def getFriendDetails(user_id, friend_id):
                     },
                     "expenseType": expense.type
                 }
+
                 expenses_list.append(expense_details)
 
                 if who_owes == "friend":
@@ -71,110 +95,189 @@ def getFriendDetails(user_id, friend_id):
                 else:
                     total_user_owe += owe_amount
 
-            total_owe_amount = abs(total_friend_owe - total_user_owe)
+        total_owe_amount = abs(total_friend_owe - total_user_owe)
+        overall_who_owes = "friend" if total_friend_owe > total_user_owe else "user"
 
-            overall_who_owes = "friend" if total_friend_owe > total_user_owe else "user"
-
-            friend_json = {
-                "uuid": friend.uuid,
-                "name": friend.name,
-                "overallOweAmount": float(total_owe_amount),
-                "overallWhoOwes": overall_who_owes,
-                "expenses": expenses_list
-            }
+        friend_json = {
+            "uuid": friend.uuid,
+            "name": friend.name,
+            "overallOweAmount": float(total_owe_amount),
+            "overallWhoOwes": overall_who_owes,
+            "expenses": expenses_list
+        }
 
         return friend_json
-    else:
-        return None
+
+    return None
 
 def calculate_owed_amounts(friends, expenses, user_id):
     friend_dues = defaultdict(float)
     friend_set = set(friends)
+
     for expense in expenses:
-        paid_by = expense['paidBy']
-        if paid_by in friend_set or paid_by == user_id:
-            for share in expense['shares']:
-                friend_id = share['userId']
-                share_amount = share['amount']
-                if paid_by == user_id:
-                    if friend_id in friend_set:
-                        friend_dues[friend_id] += share_amount
-                elif paid_by in friend_set:
-                    if friend_id == user_id:
-                        friend_dues[paid_by] -= share_amount
+        pay_shares = expense.get('payShares', [])
+        shares = expense.get('shares', [])
+
+        # Total paid in the expense (for proportion calculation)
+        total_paid = sum(float(p['amount']) for p in pay_shares if p.get('userId') is not None)
+        if total_paid == 0:
+            continue  # skip invalid expenses
+
+        for share in shares:
+            participant_id = share.get('userId')
+            share_amount = float(share.get('amount', 0))
+
+            for pay_share in pay_shares:
+                payer_id = pay_share.get('userId')
+                payer_amount = float(pay_share.get('amount', 0))
+
+                # Proportional amount of this share that payer is covering
+                payer_contribution = (payer_amount / total_paid) * share_amount
+
+                if payer_id == user_id and participant_id in friend_set:
+                    # User paid for a friend
+                    friend_dues[participant_id] += payer_contribution
+                elif participant_id == user_id and payer_id in friend_set:
+                    # Friend paid for the user
+                    friend_dues[payer_id] -= payer_contribution
+
     return friend_dues
+
 
 def get_friend_list(user_id):
     friend_expenses_pipeline = [
         {"$match": {"userId": ObjectId(user_id)}},
         {"$addFields": {
-            "friends": {"$ifNull": ["$friends", []]}  # Ensure 'friends' field exists with a default value of an empty array
+            "friends": {"$ifNull": ["$friends", []]}  # Default to empty list if no friends
         }},
         {"$lookup": {
             "from": "expense",
             "let": {"userId": "$userId", "friends": "$friends"},
             "pipeline": [
+                {"$addFields": {
+                    "payShares": {"$ifNull": ["$payShares", []]}
+                }},
                 {"$match": {
                     "$expr": {
                         "$and": [
-                            {"$or": [
-                                {"$eq": ["$paidBy", "$$userId"]},
-                                {"$in": ["$paidBy", "$$friends"]}
-                            ]},
+                            {
+                                "$or": [
+                                    {"$in": [ObjectId(user_id), "$payShares.userId"]},
+                                    {
+                                        "$gt": [
+                                            {
+                                                "$size": {
+                                                    "$setIntersection": ["$payShares.userId", "$$friends"]
+                                                }
+                                            },
+                                            0
+                                        ]
+                                    }
+                                ]
+                            },
                             {"$in": ["$type", ["settle", "friend", "group"]]}
                         ]
-                    }
+                    }   
                 }},
                 {"$project": {
                     "_id": 0,
-                    "paidBy": 1,
+                    "payShares": 1,
                     "shares": 1,
                 }}
             ],
-            "as": "matchedExpenses"
+
+            "as": "matchedExpenses",
         }}
     ]
+
+    result = list(dbManager.aggregate(Friends, friend_expenses_pipeline))
     
-    result = list(dbManager.aggregate(Friends,friend_expenses_pipeline))
-    if len(result) == 0:
+    if not result:
         return {
             "uuid": '',
             "overallYouOwe": 0,
             "overallYouAreOwed": 0,
             "friendsList": [],
         }
-    
+
     friends = result[0]['friends']
-    users = [i for i in friends]
-    users.append(ObjectId(user_id))
-    query={
-        "id__in":users
-    }
-    user_details = dbManager.findAll(User,query)
-    user = [i for i in user_details if i['id'] == ObjectId(user_id)]
-    uuid = user[0]['uuid']
+    user_ids = friends + [ObjectId(user_id)]
+
+    user_details = dbManager.findAll(User, {"id__in": user_ids})
+    user_map = {str(user["id"]): user for user in user_details}
+    user_uuid = user_map[str(user_id)]["uuid"]
+
     expenses = result[0]['matchedExpenses']
-    owed_amounts = calculate_owed_amounts(friends,expenses,ObjectId(user_id))
-    friendList = [{'id': user['id'], 'name': user['name'], 'email': user['email'], 'oweAmount': owed_amounts[user['id']]} for user in user_details if user['id'] != ObjectId(user_id)]
-    overall_you_owe = sum(amount for amount in owed_amounts.values() if amount < 0)
-    overall_you_are_owed = sum(amount for amount in owed_amounts.values() if amount > 0)
+    
+    # Use updated owed calculation
+    friend_dues = defaultdict(float)
+    total_paid = {}
+
+    for expense in expenses:
+        payShares = expense.get("payShares", [])
+        shares = expense.get("shares", [])
+        total_paid_amount = sum(float(p['amount']) for p in payShares)
+
+        if total_paid_amount == 0:
+            continue
+
+        for share in shares:
+            share_user_id = str(share['userId'])
+            share_amount = float(share['amount'])
+
+            for pay in payShares:
+                payer_id = str(pay['userId'])
+                payer_amount = float(pay['amount'])
+                proportion = (payer_amount / total_paid_amount) * share_amount
+
+                if share_user_id == user_id and payer_id in [str(fid) for fid in friends]:
+                    friend_dues[payer_id] -= proportion
+                elif payer_id == user_id and share_user_id in [str(fid) for fid in friends]:
+                    friend_dues[share_user_id] += proportion
+
+    # Prepare response
+    friendList = []
+    overall_you_owe = 0
+    overall_you_are_owed = 0
+
+    for friend_id in friends:
+        fid = str(friend_id)
+        if fid == user_id or fid not in user_map:
+            continue
+
+        amount = friend_dues[fid]
+        if amount < 0:
+            overall_you_owe += abs(amount)
+        else:
+            overall_you_are_owed += abs(amount)
+
+        friendList.append({
+            "id": str(friend_id),
+            "name": user_map[fid]["name"],
+            "email": user_map[fid]["email"],
+            "oweAmount": abs(amount),
+            "whoOwes": "friend" if amount > 0 else "user"
+        })
+
     response = {
-            "uuid": uuid,
-            "overallYouOwe": float(abs(overall_you_owe)),
-            "overallYouAreOwed": float(abs(overall_you_are_owed)),
-            "friendsList": friendList,
+        "uuid": user_uuid,
+        "overallYouOwe": float(overall_you_owe),
+        "overallYouAreOwed": float(overall_you_are_owed),
+        "friendsList": friendList
     }
+
     return response
 
 def getNonGroupExpenses(user_id):
-    user = dbManager.findOne(User,{"id":user_id})
+    user = dbManager.findOne(User, {"id": user_id})
     if not user:
         return {"error": "User not found"}
-    
-    expenses_paidBy = list(dbManager.findAll(Expense, {"type": "friend", "paidBy": user_id}))
-    query = {"type": "friend", "shares__userId": user_id}
-    expenses_shares = list(dbManager.findAll(Expense, query))
-    expenses = expenses_paidBy + [expense for expense in expenses_shares if expense.id not in [exp.id for exp in expenses_paidBy]]
+
+    # Use .objects(Q(...)) directly instead of dbManager
+    expenses = list(Expense.objects(
+        Q(type="friend") & (Q(shares__userId=user.id) | Q(payShares__userId=user.id))
+    ))
+
 
     userNameMap = {}
     sameName = {}
@@ -182,164 +285,248 @@ def getNonGroupExpenses(user_id):
     friends_data = []
     overall_you_owe = 0
     overall_you_are_owed = 0
-    
+
     for expense in expenses:
-        for share in expense.shares:
-            friend_id = str(share.userId.id)
-            if share.userId.id == user.id:
-                if expense.paidBy.id == user.id:
+        shares = expense.shares
+        payShares = expense.payShares
+        total_paid = sum(float(p.amount) for p in payShares) if payShares else 0
+
+        for share in shares:
+            share_user_id = str(share.userId.id)
+            share_amount = float(share.amount)
+
+            for payShare in payShares:
+                payer_id = str(payShare.userId.id)
+                pay_amount = float(payShare.amount)
+
+                if total_paid == 0 or payer_id == share_user_id:
                     continue
-                friend_id = str(expense.paidBy.id)
-            friend = dbManager.findOne(User,{"id":friend_id})
-            if friend.name not in userNameMap:
-                userNameMap[friend.name] = friend.email
-            elif friend.name in userNameMap and userNameMap[friend.name] != friend.email:
-                sameName[friend.name] = 1
-            if share.userId.id != expense.paidBy.id:
-                if expense.paidBy.id == user.id:
-                    if share.userId.id not in friends_map:
-                        friends_map[share.userId.id] = {
-                            "amount": float(share.amount),
-                            "name": friend.name,
-                            "email": friend.email
-                            }
-                    else:
-                        friends_map[share.userId.id]["amount"] += float(share.amount)
+
+                proportional_amount = share_amount * (pay_amount / total_paid)
+
+                # Determine friend_id (the "other" person in the transaction)
+                if share_user_id == str(user.id):
+                    # I owe someone
+                    friend_id = payer_id
+                    delta = -proportional_amount
+                elif payer_id == str(user.id):
+                    # Someone owes me
+                    friend_id = share_user_id
+                    delta = proportional_amount
                 else:
-                    if expense.paidBy.id not in friends_map:
-                        friends_map[expense.paidBy.id] = {
-                            "amount": -float(share.amount),
-                            "name": friend.name,
-                            "email": friend.email
-                            }
-                    else:
-                        friends_map[expense.paidBy.id]["amount"] -= float(share.amount)
-    for friend_expense in friends_map:
-        who_owes = "friend"
-        if friends_map[friend_expense]["amount"] < 0:
-            overall_you_owe += abs(friends_map[friend_expense]["amount"])
-            who_owes = "user"
-        else:
-            overall_you_are_owed += abs(friends_map[friend_expense]["amount"])
-        name = friends_map[friend_expense]["name"]
+                    continue  # Skip if user not involved in this share-pay pair
+
+                friend = dbManager.findOne(User, {"id": friend_id})
+                if friend.name not in userNameMap:
+                    userNameMap[friend.name] = friend.email
+                elif userNameMap[friend.name] != friend.email:
+                    sameName[friend.name] = 1
+
+                if friend_id not in friends_map:
+                    friends_map[friend_id] = {
+                        "amount": delta,
+                        "name": friend.name,
+                        "email": friend.email
+                    }
+                else:
+                    friends_map[friend_id]["amount"] += delta
+
+    # Format response
+    for friend_id in friends_map:
+        data = friends_map[friend_id]
+        name = data["name"]
         if name in sameName:
-            name = name + " ( " + friends_map[friend_expense]["email"] + " )"
-        friends_data.append(
-            {
-                "name": name,
-                "id": str(friend_expense),
-                "oweAmount": abs(friends_map[friend_expense]["amount"]),
-                "whoOwes": who_owes   
-            }
-        )
+            name = f"{name} ( {data['email']} )"
+
+        who_owes = "friend" if data["amount"] > 0 else "user"
+        if data["amount"] < 0:
+            overall_you_owe += abs(data["amount"])
+        else:
+            overall_you_are_owed += abs(data["amount"])
+
+        friends_data.append({
+            "name": name,
+            "id": str(friend_id),
+            "oweAmount": abs(data["amount"]),
+            "whoOwes": who_owes
+        })
 
     response = {
-        "overallYouOwe": float(overall_you_owe),
-        "overallYouAreOwed": float(overall_you_are_owed),
+        "overallYouOwe": float(round(overall_you_owe, 2)),
+        "overallYouAreOwed": float(round(overall_you_are_owed, 2)),
         "friendsList": friends_data
     }
 
     return response
 
+def settleUpFriendDues(user_id, friend_id):
+    friend = dbManager.findOne(User, {"id": friend_id})
+    user = dbManager.findOne(User, {"id": user_id})
 
-def settleUpFriendDues(user_id,friend_id):
-    #find events where both user and friend and user are present
-    #simply per event and settle
-    #simply non group expense and settle
-    friend = dbManager.findOne(User,{"id":friend_id})
-    user = dbManager.findOne(User,{"id":user_id})
-    if friend and user:
-        events=dbManager.findAll(Event,{"users__all":[friend,user]})
-        for event in events:
-            net_amount=0
-            expense_ids= [str(expense.id) for expense in event.expenses]
-            expenses=dbManager.findAll(Expense,{"id__in":expense_ids,"paidBy__in":[friend,user]})
-            for expense in expenses:
-                for share in expense.shares:
-                    if str(expense.paidBy.id)==user_id and str(share.userId.id)==friend_id:
-                        net_amount-=float(share.amount)
-                    elif str(expense.paidBy.id)==friend_id and str(share.userId.id)==user_id:
-                        net_amount+=float(share.amount)
-            if net_amount>0:
-                request_data={
-                    "expenseName": user.name+" settled up with "+friend.name+"("+str(event.eventName)+")" ,
-                    "amount": net_amount,
-                    "paidBy": str(user.id),
-                    "type":"settle",
-                    "eventId": str(event.id),
-                    "category":"settle",
-                    "shares": [
-                        {
-                            "userId": str(friend.id),
-                            "amount": net_amount
-                        },
-                    ],
-                    "date":dt.utcnow()
-                }
-                expenseService.createExpense(userId=user_id,requestData=request_data)
-        friend_details=getFriendDetails(user_id=user_id,friend_id=friend_id)
-        if friend_details["overallWhoOwes"]=="user" and friend_details["overallOweAmount"]!=0:
-            net_amount=friend_details["overallOweAmount"]
-            request_data={
-                "expenseName": user.name+" settled up with "+friend.name,
-                "amount": net_amount,
-                "paidBy": str(user.id),
-                "type":"settle",
-                "category":"settle",
-                "shares": [
-                    {
-                        "userId": str(friend.id),
-                        "amount": net_amount
-                    },
-                ],
-                "date":dt.utcnow()
-            }
-            expenseService.createExpense(userId=user_id,requestData=request_data)            
-        return { "success": 'true', "message": 'Settled successfully!'}
-    else:
-        return { "success": 'false', "message": 'Invalid request'}
+    if not friend or not user:
+        return {"success": 'false', "message": 'Invalid request'}
 
-def getFriendDues(user_id, friend_id):
-    friend = dbManager.findOne(User,{"id":friend_id})
-    user = dbManager.findOne(User,{"id":user_id})
-
-    if friend and user:
-        expenses =dbManager.findAll(Expense,{"paidBy__in":[friend,user] ,"type__in":["group","friend","settle"]})
-        total_owe_amount = 0
-        total_friend_owe = 0
-        total_user_owe = 0
+    # 1. Settle for group events
+    events = dbManager.findAll(Event, {"users__all": [friend, user]})
+    for event in events:
+        net_amount = 0
+        expense_ids = [expense.id for expense in event.expenses]
+        expenses = dbManager.findAll(Expense, {"id__in": expense_ids})
 
         for expense in expenses:
-            user_owe = 0
-            friend_owe = 0
+            payers = [ps.userId.id for ps in expense.payShares]
+            if user.id in payers or friend.id in payers:
+                total_paid = sum(float(ps.amount) for ps in expense.payShares)
+                if total_paid == 0:
+                    continue
+                for share in expense.shares:
+                    proportion = 0
+                    for payShare in expense.payShares:
+                        if payShare.userId == user and share.userId == friend:
+                            proportion -= float(float(share.amount) * (float(payShare.amount) / total_paid))
+                        elif payShare.userId == friend and share.userId == user:
+                            proportion += float(float(share.amount) * (float(payShare.amount) / total_paid))
+                    net_amount += proportion
 
-            for share in expense.shares:
-                if share.userId == user and expense.paidBy == friend:
-                    user_owe += share.amount
-                elif share.userId == friend and expense.paidBy == user:
-                    friend_owe += share.amount
+        if net_amount > 0:
+            request_data = {
+                "expenseName": f"{user.name} settled up with {friend.name} ({event.eventName})",
+                "amount": net_amount,
+                "payShares": [{"userId": str(user.id), "amount": net_amount}],
+                "type": "settle",
+                "eventId": str(event.id),
+                "category": "settle",
+                "shares": [{"userId": str(friend.id), "amount": net_amount}],
+                "date": dt.utcnow()
+            }
+            expenseService.createExpense(userId=user_id, requestData=request_data)
 
+    # 2. Settle remaining dues (non-group)
+    friend_details = getFriendDues(user_id=user_id, friend_id=friend_id)
+    if friend_details["whoOwes"] == "user" and friend_details["oweAmount"] != 0:
+        net_amount = friend_details["oweAmount"]
+        request_data = {
+            "expenseName": f"{user.name} settled up with {friend.name}",
+            "amount": net_amount,
+            "payShares": [{"userId": str(user.id), "amount": net_amount}],
+            "type": "settle",
+            "category": "settle",
+            "shares": [{"userId": str(friend.id), "amount": net_amount}],
+            "date": dt.utcnow()
+        }
+        expenseService.createExpense(userId=user_id, requestData=request_data)
+
+    return {"success": 'true', "message": 'Settled successfully!'}
+
+    friend = dbManager.findOne(User, {"id": friend_id})
+    user = dbManager.findOne(User, {"id": user_id})
+
+    if not friend or not user:
+        return {"success": 'false', "message": 'Invalid request'}
+
+    # 1. Settle for group events
+    events = dbManager.findAll(Event, {"users__all": [friend, user]})
+    for event in events:
+        net_amount = 0
+        expense_ids = [expense.id for expense in event.expenses]
+        expenses = dbManager.findAll(Expense, {"id__in": expense_ids})
+
+        for expense in expenses:
+            payers = [ps.userId.id for ps in expense.payShares]
+            if user.id in payers or friend.id in payers:
+                total_paid = sum(float(ps.amount) for ps in expense.payShares)
+                if total_paid == 0:
+                    continue
+                for share in expense.shares:
+                    proportion = 0
+                    for payShare in expense.payShares:
+                        if payShare.userId == user and share.userId == friend:
+                            proportion -= float(float(share.amount) * (float(payShare.amount) / total_paid))
+                        elif payShare.userId == friend and share.userId == user:
+                            proportion += float(float(share.amount) * (float(payShare.amount) / total_paid))
+                    net_amount += proportion
+
+        if net_amount > 0:
+            request_data = {
+                "expenseName": f"{user.name} settled up with {friend.name} ({event.eventName})",
+                "amount": net_amount,
+                "payShares": [{"userId": str(user.id), "amount": net_amount}],
+                "type": "settle",
+                "eventId": str(event.id),
+                "category": "settle",
+                "shares": [{"userId": str(friend.id), "amount": net_amount}],
+                "date": dt.utcnow()
+            }
+            expenseService.createExpense(userId=user_id, requestData=request_data)
+
+    # 2. Settle remaining dues (non-group)
+    friend_details = getFriendDues(user_id=user_id, friend_id=friend_id)
+    if friend_details["whoOwes"] == "user" and friend_details["oweAmount"] != 0:
+        net_amount = friend_details["oweAmount"]
+        request_data = {
+            "expenseName": f"{user.name} settled up with {friend.name}",
+            "amount": net_amount,
+            "payShares": [{"userId": str(user.id), "amount": net_amount}],
+            "type": "settle",
+            "category": "settle",
+            "shares": [{"userId": str(friend.id), "amount": net_amount}],
+            "date": dt.utcnow()
+        }
+        expenseService.createExpense(userId=user_id, requestData=request_data)
+
+    return {"success": 'true', "message": 'Settled successfully!'}
+
+def getFriendDues(user_id, friend_id):
+    friend = dbManager.findOne(User, {"id": friend_id})
+    user = dbManager.findOne(User, {"id": user_id})
+
+    if not friend or not user:
+        return None
+
+    expenses = dbManager.findAll(Expense, {"type__in": ["group", "friend", "settle"]})
+    total_friend_owe = 0
+    total_user_owe = 0
+
+    for expense in expenses:
+        user_owe = 0
+        friend_owe = 0
+
+        total_paid = sum(float(ps.amount) for ps in expense.payShares) if expense.payShares else 0
+        if total_paid == 0:
+            continue
+
+        for share in expense.shares:
+            share_amount = float(share.amount)
+
+            for payShare in expense.payShares:
+                payer_id = payShare.userId.id
+                payer_amount = float(payShare.amount)
+                proportion = (payer_amount / total_paid) * share_amount
+
+                if share.userId == user and payer_id == friend.id:
+                    user_owe += proportion
+                elif share.userId == friend and payer_id == user.id:
+                    friend_owe += proportion
+
+        if user_owe > 0 or friend_owe > 0:
             owe_amount = abs(friend_owe - user_owe)
             who_owes = "friend" if friend_owe > user_owe else "user"
+
             if who_owes == "friend":
                 total_friend_owe += owe_amount
             else:
                 total_user_owe += owe_amount
 
-        total_owe_amount = abs(total_friend_owe - total_user_owe)
+    total_owe_amount = abs(total_friend_owe - total_user_owe)
+    overall_who_owes = "friend" if total_friend_owe > total_user_owe else "user"
 
-        overall_who_owes = "friend" if total_friend_owe > total_user_owe else "user"
+    return {
+        "name": friend.name,
+        "id": str(friend.id),
+        "oweAmount": float(total_owe_amount),
+        "whoOwes": overall_who_owes
+    }
 
-        friend_json = {
-            "name": friend.name,
-            "id": str(friend.id),
-            "oweAmount": float(total_owe_amount),
-            "whoOwes": overall_who_owes
-        }
-
-        return friend_json
-    else:
-        return None
 
 def add_friend(user_id, requestData):
     friend_code = requestData.get('friendCode')

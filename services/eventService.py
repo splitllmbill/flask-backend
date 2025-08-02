@@ -25,7 +25,7 @@ def getUserEvents(user_id):
                 }},
                 {"$project": {
                     "_id": 1,
-                    "paidBy": 1,
+                    "payShares": 1,
                     "shares": 1
                 }}
             ],
@@ -66,153 +66,206 @@ def getUserEvents(user_id):
     userMap = {}
     sameNameDict = {}
     sameNameList = set()
+
+    # Build userMap
     for event in events:
         for userList in event["eventUsers"]:
             for user in userList:
                 userMap[str(user["_id"])] = user
-    if len(events) != 0:
-        userName = userMap[str(user_id)]["name"]
+
+    userName = userMap.get(str(user_id), {}).get("name", "You")
+
     for event in events:
-        eventDict = {}
-        eventDict["id"] = str(event["_id"])
-        eventDict["users"] = event["users"]
-        eventDict["eventName"] = event["eventName"]
-        eventDict["createdAt"] = str(event["createdAt"])
-        eventDict["createdBy"] = event["createdBy"]
-        eventDict["expenses"] = [str(event["_id"]) for event in event["expenses"]] 
-        eventDict["dues"] = {
-            "userName": userName,
-            "inDebtTo": [],
-            "isOwed": [],
-            "totalDebt": 0,
-            "totalOwed": 0
+        print(event.get("_id"))
+        eventDict = {
+            "id": str(event["_id"]),
+            "users": event["users"],
+            "eventName": event["eventName"],
+            "createdAt": str(event["createdAt"]),
+            "createdBy": event["createdBy"],
+            "expenses": [str(exp["_id"]) for exp in event["expenses"]],
+            "dues": {
+                "userName": userName,
+                "inDebtTo": [],
+                "isOwed": [],
+                "totalDebt": 0,
+                "totalOwed": 0
+            }
         }
+
         dueDict = {}
+
         for expense in event["expenses"]:
-            for share in expense["shares"]:
-                if userMap[str(share["userId"])]["name"] not in sameNameDict:
-                    sameNameDict[userMap[str(share["userId"])]["name"]] = userMap[str(share["userId"])]["email"]
-                else:
-                    if userMap[str(share["userId"])]["email"] != sameNameDict[userMap[str(share["userId"])]["name"]]:
-                        sameNameList.add(userMap[str(share["userId"])]["name"])
-                if str(share["userId"]) != str(expense["paidBy"]):
-                    if str(user_id) == str(expense["paidBy"]):
-                        if str(share["userId"]) not in dueDict:
-                            dueDict[str(share["userId"])] = -float(share["amount"])
-                        else:
-                            dueDict[str(share["userId"])] -= float(share["amount"])
-                    else:
-                        if str(share["userId"]) != str(user_id):
-                            continue
-                        if str(expense["paidBy"]) not in dueDict:
-                            dueDict[str(expense["paidBy"])] = float(share["amount"])
-                        else:
-                            dueDict[str(expense["paidBy"])] += float(share["amount"])
-        for due in dueDict:
-            name =  userMap[str(due)]["name"]
+            print(expense.get("_id"))
+            shares = expense.get("shares", [])
+            payShares = expense.get("payShares", [])
+            print(payShares)
+            total_paid = sum(float(ps["amount"]) for ps in payShares) if payShares else 0
+
+            for share in shares:
+                participant_id = str(share["userId"])
+                share_amount = float(share["amount"])
+
+                # Handle sameName detection
+                name = userMap.get(participant_id, {}).get("name", "")
+                email = userMap.get(participant_id, {}).get("email", "")
+                if name:
+                    if name not in sameNameDict:
+                        sameNameDict[name] = email
+                    elif email != sameNameDict[name]:
+                        sameNameList.add(name)
+
+                # Skip if self-paying
+                for payShare in payShares:
+                    payer_id = str(payShare["userId"])
+                    payer_amount = float(payShare["amount"])
+                    if total_paid == 0:
+                        continue
+
+                    proportional_share = share_amount * (payer_amount / total_paid)
+
+                    if participant_id == payer_id:
+                        continue
+
+                    if participant_id == str(user_id):
+                        dueDict[payer_id] = dueDict.get(payer_id, 0.0) + proportional_share
+                    elif payer_id == str(user_id):
+                        dueDict[participant_id] = dueDict.get(participant_id, 0.0) - proportional_share
+
+        for due_id, amount in dueDict.items():
+            user_data = userMap.get(due_id, {})
+            name = user_data.get("name", "Unknown")
             if name in sameNameList:
-                name = name + " ( " + userMap[str(due)]["email"] + " )"
-            if dueDict[due] < 0:
+                name += f" ( {user_data.get('email', '')} )"
+            abs_amount = float(abs(amount))
+
+            if amount < 0:
                 eventDict["dues"]["isOwed"].append({
-                    "id": str(due),
+                    "id": str(due_id),
                     "name": name,
-                    "amount": float(abs(dueDict[due]))
+                    "amount": abs_amount
                 })
-                eventDict["dues"]["totalOwed"] += float(abs(dueDict[due]))
-                overallOweAmount += float(dueDict[due])
+                eventDict["dues"]["totalOwed"] += abs_amount
+                overallOweAmount += amount
             else:
                 eventDict["dues"]["inDebtTo"].append({
-                    "id": str(due),
+                    "id": str(due_id),
                     "name": name,
-                    "amount": float(abs(dueDict[due]))
+                    "amount": abs_amount
                 })
-                eventDict["dues"]["totalDebt"] += float(abs(dueDict[due]))
-                overallOweAmount += float(dueDict[due])
+                eventDict["dues"]["totalDebt"] += abs_amount
+                overallOweAmount += amount
+
         eventsList.append(eventDict)
+
     if overallOweAmount < 0:
         owingPerson = "friend"
         overallOweAmount = abs(overallOweAmount)
+
     response = {
-                "overallOweAmount": float(overallOweAmount),
-                "owingPerson": owingPerson,
-                "events": [toJson(event) for event in eventsList]
-                }
+        "overallOweAmount": float(overallOweAmount),
+        "owingPerson": owingPerson,
+        "events": [toJson(event) for event in eventsList]
+    }
+
     return response
 
 def getEventDues(event_id):
     try:
-        query={
-            "id":event_id
+        query = {
+            "id": event_id
         }
-        event = dbManager.findOne(Event,query)
+        event = dbManager.findOne(Event, query)
         if event is None:
             raise ValueError("Event not found")
 
         user_balances = {ObjectId(user.id): 0 for user in event.users}
         expenses = expenseService.getEventExpenses(event.id)
         amounts_owed = {}
-        user_payees = {}
-        for expense in expenses:
-            payer_id = str(expense.paidBy.id)
-            shares = expense.shares
-            for share in shares:
-                share_amount = float(share.amount)
-                participant_id = str(share.userId.id)
-                if participant_id not in amounts_owed:
-                    amounts_owed[participant_id]={}
-                if payer_id not in amounts_owed[participant_id]:
-                    amounts_owed[participant_id][payer_id]=float(0)
-                amounts_owed[participant_id][payer_id]+=share_amount
-        result = {}
         user_name_map = {}
-        calculated_list=[]
+        calculated_list = []
+
+        for expense in expenses:
+            shares = expense.shares  # How much each participant owes
+            payShares = expense.payShares  # Who paid how much
+
+            for pay_share in payShares:
+                payer_id = str(pay_share.userId.id)
+
+                for share in shares:
+                    share_amount = float(share.amount)
+                    participant_id = str(share.userId.id)
+
+                    if participant_id == payer_id:
+                        continue  # Skip self-payment
+
+                    if participant_id not in amounts_owed:
+                        amounts_owed[participant_id] = {}
+
+                    if payer_id not in amounts_owed[participant_id]:
+                        amounts_owed[participant_id][payer_id] = 0.0
+
+                    # Divide share amount proportionally across payShares
+                    total_paid = sum(float(ps.amount) for ps in payShares)
+                    payer_ratio = float(pay_share.amount) / total_paid if total_paid != 0 else 0
+                    proportional_share = share_amount * payer_ratio
+
+                    amounts_owed[participant_id][payer_id] += proportional_share
+
+        # Resolve net debts
         for participant, debts in amounts_owed.items():
             for payer, amount in debts.items():
-                if payer+participant not in calculated_list and participant+payer not in calculated_list:
+                key1 = payer + participant
+                key2 = participant + payer
+                if key1 not in calculated_list and key2 not in calculated_list:
+                    reverse_exist = False
                     payer_to_participant = 0
                     participant_to_payer = amount
-                    reverse_exist=False
-                    if payer in amounts_owed:
-                        if participant in amounts_owed[payer]:
-                            reverse_exist=True
-                            payer_to_participant=amounts_owed[payer][participant]
+
+                    if payer in amounts_owed and participant in amounts_owed[payer]:
+                        reverse_exist = True
+                        payer_to_participant = amounts_owed[payer][participant]
+
                     net_amount = participant_to_payer - payer_to_participant
-                    if net_amount>0:
-                        amounts_owed[participant][payer]=net_amount
+                    if net_amount > 0:
+                        amounts_owed[participant][payer] = net_amount
                         if reverse_exist:
-                            amounts_owed[payer][participant]=0
-                    elif net_amount<0:
+                            amounts_owed[payer][participant] = 0
+                    elif net_amount < 0:
                         if not reverse_exist:
-                            amounts_owed[payer]={}
-                        amounts_owed[payer][participant]=net_amount*-1
-                        amounts_owed[participant][payer]=0
+                            amounts_owed[payer] = {}
+                        amounts_owed[payer][participant] = -net_amount
+                        amounts_owed[participant][payer] = 0
                     else:
                         if reverse_exist:
-                            amounts_owed[payer][participant]=0
-                        amounts_owed[participant][payer]=0
+                            amounts_owed[payer][participant] = 0
+                        amounts_owed[participant][payer] = 0
+
+                    # Update name cache
                     if payer not in user_name_map:
-                        user_name_map[payer]= userService.getUserNameById(payer)
+                        user_name_map[payer] = userService.getUserNameById(payer)
                     if participant not in user_name_map:
-                        user_name_map[participant]= userService.getUserNameById(participant)
-                    calculated_list.append(payer+participant)
-        
+                        user_name_map[participant] = userService.getUserNameById(participant)
+
+                    calculated_list.append(key1)
+
+        # Format response
         event_dues = []
         for debtor in amounts_owed:
             debtor_name = user_name_map[str(debtor)]
             creditor_details = []
             for creditor in amounts_owed[debtor]:
-                creditor_name = user_name_map[str(creditor)]
                 amount = amounts_owed[debtor][creditor]
-                if amount!=0:
+                if amount != 0:
+                    creditor_name = user_name_map[str(creditor)]
                     creditor_details.append(CreditorDetail(creditor, creditor_name, amount).__dict__)
             event_dues.append(EventDue(debtor, debtor_name, creditor_details).__dict__)
-        
+
         final_result = EventDueSummary(event_dues)
-    
+        return final_result
+
     except ValueError as ve:
-        # Handle the specific exception raised when the event is not found
         return {"error": str(ve)}
-    return final_result
 
 def getEventDuesForUser(event_id, user_id):
     result = {"userName":"","inDebtTo": [], "isOwed": [], "totalDebt": 0, "totalOwed": 0}
@@ -279,35 +332,40 @@ def deleteEvent(event_id):
     return {"message":'Successfully deleted event', "success":"true"}
 
                
-def saveEvent(user_id,request_data):
+def saveEvent(user_id, request_data):
     new_event = Event(**request_data)
-    if "id" in request_data.keys():
-        event=getEventByID(request_data['id'])
-        original_set = set([str(user['id']) for user in event.users])
+    
+    if "id" in request_data:
+        event = getEventByID(request_data['id'])
+        original_set = set(str(user['id']) for user in event.users)
         modified_set = set(new_event.users)
 
-        # Find the elements that are in the original set but not in the modified set
         removed_elements = original_set - modified_set
-        # Convert the result back to a list
-        removed_elements_list = list(removed_elements)
-        if event.createdBy in removed_elements_list:
-            raise Exception("cannot remove event creator")    
-        for expense in event.expenses:
-            if expense.paidBy.i in removed_elements_list:
-                raise Exception("user present in expenses")
-            for share in expense.shares:
-                if share.userId.id in removed_elements_list:
-                    raise Exception("user present in shares")
 
-        new_event.updatedBy=ObjectId(user_id)
-        new_event.updatedAt= dt.utcnow()
+        if str(event.createdBy) in removed_elements:
+            raise Exception("Cannot remove event creator")
+        
+        for expense in event.expenses:
+            # Check payShares
+            for pay_share in expense.payShares:
+                if str(pay_share.userId.id) in removed_elements:
+                    raise Exception("User present in payShares")
+            
+            # Check shares
+            for share in expense.shares:
+                if str(share.userId.id) in removed_elements:
+                    raise Exception("User present in shares")
+        
+        new_event.updatedBy = ObjectId(user_id)
+        new_event.updatedAt = dt.utcnow()
     else:
-        new_event.createdBy=ObjectId(user_id)
-        new_event.createdAt= dt.utcnow()
-    
+        new_event.createdBy = ObjectId(user_id)
+        new_event.createdAt = dt.utcnow()
+
+    # Add any new friends
     for user in new_event.users:
         if user.id != ObjectId(user_id):  
-            friendService.add_friend(user_id, { "friendCode": user.uuid})
+            friendService.add_friend(user_id, {"friendCode": user.uuid})
 
     new_event.save()
     return new_event

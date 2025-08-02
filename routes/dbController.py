@@ -135,7 +135,7 @@ def signup():
                     resp = {'message': 'Invalid Invite Code. Please try again'}
                     return Response(response=json.dumps(resp), status=400, mimetype="application/json")
             del user_data['inviteCode']
-            
+            print("Hiii")
             # save user info
             new_user = User(**user_data)
             password = aes.decrypt(new_user.password)
@@ -391,6 +391,7 @@ def updateEvent():
                 r = flaskResponse(ResponseStatus.BAD_REQUEST)
                 return
             result=eventService.saveEvent(session_user_id,requestData)
+            print("noob")
             r=flaskResponse(ResponseStatus.SUCCESS,result)
         except jwt.PyJWTError as e:
             print(e)

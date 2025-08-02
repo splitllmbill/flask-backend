@@ -1,4 +1,4 @@
-from models.common import DatabaseManager,Expense,Event, Share, User, toJson
+from models.common import DatabaseManager,Expense,Event, Share, User, toJson,PayShare
 from datetime import datetime as dt
 from bson import ObjectId
 from services import expenseService, shareService
@@ -24,13 +24,21 @@ def getExpenseById(expenseId, userId):
             "email":str(share.userId.email),
             "amount": float(share.amount)
         })
+    new_payShares=[]
+    
+    for payShare in expense.payShares:
+        print(str(payShare.userId.id))
+        new_payShares.append({
+            "userId": str(payShare.userId.id),
+            "name": str(dbManager.findOne(User, {"id": payShare.userId.id}).name),
+            "email": str(dbManager.findOne(User, {"id": payShare.userId.id}).email),
+            "amount": float(payShare.amount)
+        })
     result = {
         "expenseName": expense.expenseName,
         "amount": float(expense.amount),
         "type": expense.type,
-        "paidById": str(expense.paidBy.id),
-        "paidBy": "you" if str(expense.paidBy.id) == userId else dbManager.findOne(User, {"id": expense.paidBy.id}).name,
-        "paidByEmail":dbManager.findOne(User, {"id": expense.paidBy.id}).email,
+        "payShares":new_payShares,
         "shares":new_shares,
         "createdAt": str(expense.createdAt),
         "updatedAt": str(expense.updatedAt),
@@ -47,7 +55,7 @@ def getExpenseById(expenseId, userId):
 def createExpense(userId, requestData):
     if requestData["expenseName"] == "" or requestData["category"] == "" or requestData["amount"] == 0:
         return {"message": "There are some missing/invalid fields. Please check your input and try again!", "success": "false"}
-    if requestData["type"] != "normal" and (requestData["paidBy"] == "" or len(requestData["shares"]) == 0):
+    if requestData["type"] != "normal" and (len(requestData["payShares"]) == 0 or len(requestData["shares"]) == 0):
         return {"message": "There are some missing/invalid fields. Please check your input and try again!", "success": "false"}
     shares = requestData['shares']
     shareTotal=0
@@ -63,10 +71,6 @@ def createExpense(userId, requestData):
     new_expense = Expense(**requestData)
     new_expense.shares = new_shares
     new_expense.type=requestData["type"]
-    if requestData["type"] == "normal":
-        new_expense["paidBy"] = ObjectId(userId) 
-    else:
-        new_expense["paidBy"] = ObjectId(requestData["paidBy"])
     new_expense.createdBy = ObjectId(userId)
     new_expense.updatedBy = ObjectId(userId)
     new_expense.createdAt = dt.utcnow()
@@ -91,7 +95,7 @@ def createExpense(userId, requestData):
 def updateExpense(userId, expenseId, requestData):
     if requestData["expenseName"] == "" or requestData["category"] == "" or requestData["amount"] == 0:
         return {"message": "There are some missing/invalid fields. Please check your input and try again!", "success": "false"}
-    if 'type' not in requestData and (requestData["paidBy"] == "" or len(requestData["shares"]) == 0):
+    if 'type' not in requestData and (len(requestData["shares"]) == 0):
         return {"message":"There are some missing/invalid field. Please check your input and try again!", "success":"false"}
     query = {
         "id": expenseId
@@ -99,9 +103,20 @@ def updateExpense(userId, expenseId, requestData):
     expense = dbManager.findOne(Expense, query)
     if expense is None:
         return False
-    requestData['paidBy'] = ObjectId(requestData['paidBy'])
     requestData['updatedAt'] = dt.utcnow()
     requestData['updatedBy'] = ObjectId(userId)
+    
+    if 'payShares' in requestData:
+        new_payShares = []
+        for payShare in requestData['payShares']:
+            newPayShare = PayShare(
+                userId= ObjectId(payShare["userId"]),
+                amount= payShare["amount"]
+            )
+            new_payShares.append(newPayShare)
+        expense.payShares = new_payShares
+        requestData["payShares"]=new_payShares
+    print(expense.payShares)
     if 'shares' in requestData:
         shares_data = requestData.pop('shares')
         shares = []
@@ -109,6 +124,7 @@ def updateExpense(userId, expenseId, requestData):
             share = Share(userId=ObjectId(share_data['userId']), amount=share_data['amount'])
             shares.append(share)
         expense.shares = shares
+        requestData["shares"]=shares
     dbManager.update(expense, **requestData)
     return {"message":'Successfully updated expense', "success":"true"}
 
@@ -168,7 +184,7 @@ def getEventExpensesAlongWithUserSummary(userId, eventId):
             "expenseId": str(expense.id),
             "expenseDate": str(expense.date),
             "type":expense.type,
-            "paidBy":str(expense.paidBy.name),
+            # "paidBy":str(expense.paidBy.name),
             "amount": float(expense.amount),
             "category": expense.category,
             "user_summary": summary
@@ -182,25 +198,39 @@ def getEventExpensesAlongWithUserSummary(userId, eventId):
     }
     return result
         
-def getAllExpensesForUser(user_id,request_data):
+def getAllExpensesForUser(user_id, request_data):
     try:
         user_object_id = ObjectId(user_id)
-        filters =request_data["filters"]
+        filters = request_data["filters"]
+
         query = {
-            "paidBy": user_object_id,
-            "type": "normal"
+            "type": "normal",
+            "payShares": {
+                "$elemMatch": {
+                    "userId": user_object_id
+                }
+            }
         }
+
+        # Apply filters
         for filter in filters:
-            if filter["operator"]=='IN':
-                lowercase_filter = [string.lower() for string in filter["values"]]
-                query[filter["field"]+constants.operatorMap[filter["operator"]]] = lowercase_filter
-            elif filter["operator"] == "BTW":
-                if filter["values"][0] != "MIN":
-                    query[filter["field"] + '__gte'] = float(filter["values"][0])
-                if filter["values"][1] != "MAX":
-                    query[filter["field"] + '__lte'] = float(filter["values"][1])
-        all_expenses = dbManager.findAllMultiSort(Expense, query, [('date','-'),('updatedAt','-')])
+            field = filter["field"]
+            operator = filter["operator"]
+            values = filter["values"]
+
+            if operator == 'IN':
+                lowercase_filter = [string.lower() for string in values]
+                query[field + constants.operatorMap[operator]] = lowercase_filter
+
+            elif operator == "BTW":
+                if values[0] != "MIN":
+                    query[field + '__gte'] = float(values[0])
+                if values[1] != "MAX":
+                    query[field + '__lte'] = float(values[1])
+
+        all_expenses = dbManager.findAllMultiSort(Expense, query, [('date', '-'), ('updatedAt', '-')])
         return all_expenses
+
     except Exception as e:
         print(f"Error in getAllExpensesForUser function: {e}")
         raise e

@@ -8,7 +8,7 @@ def getExpenseShares(userId, expenseId):
         raise ValueError("Expense not found")
     user_owe=0
     friends_owe=0
-    if str(expense.paidBy.id) == userId:  # Expense paid by the user
+    if userId in [str(payShare.userId) for payShare in expense.payShares]:
         for share in expense.shares:
             if str(share.userId.id) != userId:
                 friends_owe += share.amount
