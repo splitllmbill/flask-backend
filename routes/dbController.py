@@ -128,14 +128,14 @@ def signup():
     if request.method == 'POST':
         try:
             user_data = request.get_json()
-            inviteCode = user_data['inviteCode']
-            if inviteCode != current_app.config['ADMIN_CODE']: 
-                referred_user = referralService.getUserByInviteCode(inviteCode)
-                if not referred_user:
-                    resp = {'message': 'Invalid Invite Code. Please try again'}
-                    return Response(response=json.dumps(resp), status=400, mimetype="application/json")
-            del user_data['inviteCode']
-            print("Hiii")
+            # inviteCode = user_data['inviteCode']
+            # if inviteCode != current_app.config['ADMIN_CODE']: 
+            #     referred_user = referralService.getUserByInviteCode(inviteCode)
+            #     if not referred_user:
+            #         resp = {'message': 'Invalid Invite Code. Please try again'}
+            #         return Response(response=json.dumps(resp), status=400, mimetype="application/json")
+            # del user_data['inviteCode']
+            
             # save user info
             new_user = User(**user_data)
             password = aes.decrypt(new_user.password)
@@ -146,8 +146,8 @@ def signup():
             new_user.uuid = generator.codeGenerate(6)
             new_user.save()
 
-            if inviteCode != current_app.config['ADMIN_CODE']: 
-                referralService.addReferredUser(inviteCode,new_user.id)
+            # if inviteCode != current_app.config['ADMIN_CODE']: 
+            #     referralService.addReferredUser(inviteCode,new_user.id)
             # save account info
             new_account = Account()
             new_account.createdAt = datetime.datetime.now(datetime.timezone.utc)
@@ -391,7 +391,6 @@ def updateEvent():
                 r = flaskResponse(ResponseStatus.BAD_REQUEST)
                 return
             result=eventService.saveEvent(session_user_id,requestData)
-            print("noob")
             r=flaskResponse(ResponseStatus.SUCCESS,result)
         except jwt.PyJWTError as e:
             print(e)
