@@ -11,24 +11,12 @@ def getUserEvents(user_id):
     pipeline = [
         {"$match": {"users": ObjectId(user_id)}},
         {"$addFields": {
-            "expenses": {"$ifNull": ["$expenses", []]},
             "users": {"$ifNull": ["$users", []]} 
         }},
         {"$lookup": {
             "from": "expense",
-            "let": {"expensesIds": "$expenses"},
-            "pipeline": [
-                {"$match": {
-                    "$expr": {
-                        "$in": ["$_id", "$$expensesIds"]
-                    }
-                }},
-                {"$project": {
-                    "_id": 1,
-                    "payShares": 1,
-                    "shares": 1
-                }}
-            ],
+            "localField": "_id",
+            "foreignField": "eventId",
             "as": "eventExpenses"
         }},
         {"$lookup": {
@@ -179,6 +167,7 @@ def getEventDues(event_id):
         if event is None:
             raise ValueError("Event not found")
 
+        users_set = set(event.users)
         user_balances = {ObjectId(user.id): 0 for user in event.users}
         expenses = expenseService.getEventExpenses(event.id)
         amounts_owed = {}
@@ -314,21 +303,27 @@ def getEventByID(event_id):
         raise Exception(ValueError)
     return event
 
-def deleteEvent(event_id):
+def deleteEvent(event_id, user_id):
     query = {
         "id": event_id
     }
     event = dbManager.findOne(Event,query)
     if event is None:
-        return False
-    dues = eventService.getEventDues(event_id)
-    for due in dues.eventDues:
-        if due["creditorDetails"] and len(due["creditorDetails"]) > 0:
-            return {"message":'Cannot delete event. There are unsettled dues.', "success":"false"}
-    else:
-        for expense in event.expenses:
-            dbManager.delete(expense)
-        dbManager.delete(event)
+        return {"success": "false", "message": "Event not found"}
+        
+    if str(event.createdBy.id) != str(user_id):
+        return {"success": "false", "message": "Unauthorized: Only the creator can delete this event"}
+
+    dues = getEventDues(event_id)
+    if dues.eventDues:
+        for due in dues.eventDues:
+             if due["creditorDetails"] and len(due["creditorDetails"]) > 0:
+                return {"message":'Cannot delete event. There are unsettled dues.', "success":"false"}
+
+    expenses = expenseService.getEventExpenses(event_id)
+    for expense in expenses:
+        dbManager.delete(expense)
+    dbManager.delete(event)
     return {"message":'Successfully deleted event', "success":"true"}
 
                
@@ -342,10 +337,11 @@ def saveEvent(user_id, request_data):
 
         removed_elements = original_set - modified_set
 
-        if str(event.createdBy) in removed_elements:
+        if str(event.createdBy.id) in removed_elements:
             raise Exception("Cannot remove event creator")
         
-        for expense in event.expenses:
+        event_expenses = expenseService.getEventExpenses(event.id)
+        for expense in event_expenses:
             # Check payShares
             for pay_share in expense.payShares:
                 if str(pay_share.userId.id) in removed_elements:

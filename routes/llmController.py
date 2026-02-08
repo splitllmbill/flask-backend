@@ -71,6 +71,4 @@ def convert_expense(userId, request):
     promptDocument.save()
     return flaskResponse(ResponseStatus.SUCCESS,{'message': 'Expense Processed Successfully', 'llmoutput': jsonArray})
         
-@llm_route.route('/home', methods=['GET'])
-def home():
-    return 'Welcome to home'
+

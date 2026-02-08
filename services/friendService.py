@@ -370,66 +370,7 @@ def settleUpFriendDues(user_id, friend_id):
     events = dbManager.findAll(Event, {"users__all": [friend, user]})
     for event in events:
         net_amount = 0
-        expense_ids = [expense.id for expense in event.expenses]
-        expenses = dbManager.findAll(Expense, {"id__in": expense_ids})
-
-        for expense in expenses:
-            payers = [ps.userId.id for ps in expense.payShares]
-            if user.id in payers or friend.id in payers:
-                total_paid = sum(float(ps.amount) for ps in expense.payShares)
-                if total_paid == 0:
-                    continue
-                for share in expense.shares:
-                    proportion = 0
-                    for payShare in expense.payShares:
-                        if payShare.userId == user and share.userId == friend:
-                            proportion -= float(float(share.amount) * (float(payShare.amount) / total_paid))
-                        elif payShare.userId == friend and share.userId == user:
-                            proportion += float(float(share.amount) * (float(payShare.amount) / total_paid))
-                    net_amount += proportion
-
-        if net_amount > 0:
-            request_data = {
-                "expenseName": f"{user.name} settled up with {friend.name} ({event.eventName})",
-                "amount": net_amount,
-                "payShares": [{"userId": str(user.id), "amount": net_amount}],
-                "type": "settle",
-                "eventId": str(event.id),
-                "category": "settle",
-                "shares": [{"userId": str(friend.id), "amount": net_amount}],
-                "date": dt.utcnow()
-            }
-            expenseService.createExpense(userId=user_id, requestData=request_data)
-
-    # 2. Settle remaining dues (non-group)
-    friend_details = getFriendDues(user_id=user_id, friend_id=friend_id)
-    if friend_details["whoOwes"] == "user" and friend_details["oweAmount"] != 0:
-        net_amount = friend_details["oweAmount"]
-        request_data = {
-            "expenseName": f"{user.name} settled up with {friend.name}",
-            "amount": net_amount,
-            "payShares": [{"userId": str(user.id), "amount": net_amount}],
-            "type": "settle",
-            "category": "settle",
-            "shares": [{"userId": str(friend.id), "amount": net_amount}],
-            "date": dt.utcnow()
-        }
-        expenseService.createExpense(userId=user_id, requestData=request_data)
-
-    return {"success": 'true', "message": 'Settled successfully!'}
-
-    friend = dbManager.findOne(User, {"id": friend_id})
-    user = dbManager.findOne(User, {"id": user_id})
-
-    if not friend or not user:
-        return {"success": 'false', "message": 'Invalid request'}
-
-    # 1. Settle for group events
-    events = dbManager.findAll(Event, {"users__all": [friend, user]})
-    for event in events:
-        net_amount = 0
-        expense_ids = [expense.id for expense in event.expenses]
-        expenses = dbManager.findAll(Expense, {"id__in": expense_ids})
+        expenses = expenseService.getEventExpenses(event.id)
 
         for expense in expenses:
             payers = [ps.userId.id for ps in expense.payShares]
@@ -483,7 +424,11 @@ def getFriendDues(user_id, friend_id):
     if not friend or not user:
         return None
 
-    expenses = dbManager.findAll(Expense, {"type__in": ["group", "friend", "settle"]})
+    expenses = Expense.objects(
+        Q(type__in=["group", "friend", "settle"]) & (
+            Q(payShares__userId__in=[user.id, friend.id]) | Q(shares__userId__in=[user.id, friend.id])
+        )
+    )
     total_friend_owe = 0
     total_user_owe = 0
 

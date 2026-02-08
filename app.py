@@ -4,7 +4,7 @@ from pathlib import Path
 from flask_cors import CORS
 from dotenv import load_dotenv
 from routes.dbController import db_route
-#from routes.llmController import llm_route
+from routes.llmController import llm_route
 
 app = Flask(__name__)
 CORS(app)
@@ -25,7 +25,7 @@ app.config['ADMIN_CODE'] = os.getenv('ADMIN_CODE')
 
 # Configure Routes
 app.register_blueprint(db_route, url_prefix='/db')
-#app.register_blueprint(llm_route, url_prefix='/llm')
+app.register_blueprint(llm_route, url_prefix='/llm')
 
 if __name__ == '__main__':
     app.run(port=8081,host = '0.0.0.0',debug=True)

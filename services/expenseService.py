@@ -78,17 +78,7 @@ def createExpense(userId, requestData):
     new_expense.category = requestData["category"]
     new_expense.date = requestData["date"]
 
-    if requestData['type'] in ['group','settle'] and ("eventId" in requestData) and requestData["eventId"]!="":
-        event = dbManager.findOne(Event, {"id": ObjectId(requestData["eventId"])})
-        if event:
-            new_expense.eventId = ObjectId(requestData["eventId"])
-            new_expense.save()  # Save the new expense first
-            event.expenses.append(new_expense)
-            event.save()  # Save the event after updating its expenses
-        else:
-            raise ValueError("Event not found for the provided eventId")
-    else:
-        new_expense.save()
+    new_expense.save()
 
     return {"message":"Expense created!", "success":"true", "data": toJson(new_expense)}
 
@@ -134,17 +124,6 @@ def deleteExpense(expenseId):
         "id": expenseId
     }
     expense = dbManager.findOne(Expense,query)
-    if expense.eventId and str(expense.eventId.id)!="":
-        query={
-            "id":expense.eventId.id
-        }
-        event = dbManager.findOne(Event,query)
-        new_expenses=[]
-        for expense in event.expenses:
-            if str(expense.id) != expenseId:
-                new_expenses.append(expense)
-        event.expenses=new_expenses
-        event.save()
     if expense is None:
         return False
     dbManager.delete(expense)
@@ -152,20 +131,9 @@ def deleteExpense(expenseId):
 
 def getEventExpenses(eventId):
     query = {
-        "id": eventId
+        "eventId": ObjectId(eventId)
     }
-    event = dbManager.findOne(Event,query)
-    if event is None:
-        raise Exception(ValueError)
-    
-    expense_ids=[]
-    for expense in event.expenses:
-        expense_ids.append(str(expense.id))
-
-    query={
-        "id__in":expense_ids
-    }
-    expenses=dbManager.findAll(Expense,query)
+    expenses = dbManager.findAll(Expense, query)
     return expenses
 
 def getEventExpensesAlongWithUserSummary(userId, eventId):

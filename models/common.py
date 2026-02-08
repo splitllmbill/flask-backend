@@ -158,7 +158,7 @@ class Event(Document):
     updatedAt = DateTimeField()
     createdBy = ReferenceField('User')
     updatedBy = ReferenceField('User')
-    expenses = ListField(ReferenceField('Expense'))
+    # expenses field removed, query by eventId instead
 
 class Share(EmbeddedDocument):
     amount = DecimalField(required=True)
